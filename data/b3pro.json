@@ -1,0 +1,26 @@
+{
+  "model": "B3PRO",
+  "brand": ["PIVA", "BORNEFORESPORTS"],
+  "type": "magnetic-semiconductor-phone-cooler",
+  "power_w": 25,
+  "fan_blades": 7,
+  "max_rpm": 5454,
+  "weight_g": 80,
+  "cooling_area_mm2": 2298,
+  "material": "1060 aluminum",
+  "color": "white",
+  "rgb": true,
+  "power_port": "USB-C",
+  "cable": "1.2m double Type-C",
+  "mount": ["magnetic", "clip", "steel-sheet"],
+  "levels": [
+    {"id": 1, "name": "ECO", "alias": "silent", "watt": 8, "rpm": 1800},
+    {"id": 2, "name": "NORM", "alias": "balance", "watt": 14, "rpm": 2800},
+    {"id": 3, "name": "GAME", "alias": "overclock", "watt": 20, "rpm": 4200},
+    {"id": 4, "name": "TURBO", "alias": "ai-max", "watt": 25, "rpm": 5454}
+  ],
+  "ble": {
+    "status": "unknown",
+    "note": "Official APK not unpacked. Web Bluetooth discovers services at runtime."
+  }
+}
