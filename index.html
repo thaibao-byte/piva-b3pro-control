@@ -84,12 +84,9 @@ var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe3
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:7,name:"Ánh sáng chảy"},{id:1,name:"Nhịp thở"},{id:2,name:"Đuổi theo"},{id:3,name:"Đệm"},{id:4,name:"Sáng liên tục"},{id:5,name:"Vòng sao"},{id:6,name:"Linh động"}];
 var PROF=[{id:"yen",name:"Êm",mode:1,rage:0,pct:80,fx:1},{id:"can",name:"Cân bằng",mode:2,rage:0,pct:80,fx:7},{id:"game",name:"Chơi game",mode:3,rage:1,pct:100,fx:4}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,low:false,prof:"",timer:null,fw:"V212",busy:false,runAcc:0,runAt:0,ntc:null};
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,low:false,prof:"",timer:null,fw:"V212",busy:false,runAcc:0,runAt:0,ntc:null,poll:null};
 function $(id){return document.getElementById(id)}
-function log(){}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
-function hex(u){return Array.from(u).map(function(b){return ("0"+b.toString(16)).slice(-2)}).join(" ").toUpperCase()}
-function dec(u){try{return new TextDecoder().decode(u).replace(/\u0000/g,"").trim()}catch(e){return ""}}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
 function frame(cmd,data){data=data||[];var p=[0x20,cmd,data.length].concat(data);p.push(sum8(p));return p}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
@@ -103,6 +100,8 @@ function runNow(){if(st.ok&&st.on&&st.runAt)return st.runAcc+(Date.now()-st.runA
 function tickRun(){$("run").textContent=fmtRun(runNow())}
 function startRun(){if(!st.runAt)st.runAt=Date.now()}
 function stopRun(){if(st.runAt){st.runAcc+=Date.now()-st.runAt;st.runAt=0}tickRun()}
+function startPoll(){stopPoll();st.poll=setInterval(async function(){if(!st.ok||!st.w)return;try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}},1500)}
+function stopPoll(){if(st.poll){clearInterval(st.poll);st.poll=null}}
 function resetRun(){st.runAcc=0;st.runAt=0;tickRun()}
 function guessNtc(data){var i,v;for(i=0;i<data.length;i++){if(i===0||i===3||i===4)continue;v=data[i];if(v>=8&&v<=90)return v}return null}
 function setProtUi(){$("protTxt").textContent=st.low?"Nhiệt thấp bật":"Nhiệt thấp tắt";$("bProt").className="card"+(st.low?" on":"")}
@@ -112,14 +111,14 @@ function paint(){$("modeTxt").textContent=modeName(st.mode);$("lightTxt").textCo
 function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));if(cmd===0xA5&&data.length>=7){$("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";$("watt").textContent=data[0]+"W";if(data[0]>0)$("pps").textContent="PPS";var t=guessNtc(data);if(t!=null){st.ntc=t;$("ntc").textContent=t+"°C"}return}if(cmd===0xA6&&data.length>=4){st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";if(st.on)startRun();else stopRun();paint();save();return}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(data.length>=2)st.fx=data[1]||st.fx;paint()}}
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
-async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);await n.startNotifications();n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});dev.addEventListener("gattserverdisconnected",function(){stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối")});st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");resetRun();startRun();try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}}
+async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);await n.startNotifications();n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});dev.addEventListener("gattserverdisconnected",function(){stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối")});st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");resetRun();startRun();startPoll();try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}}
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 async function power(on){st.on=on;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(on)startRun();else stopRun();if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}}
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;if(!min){toast("Đã đóng hẹn giờ");return}toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){power(false);toast("Đã tắt theo lịch")},min*60000)}
 async function applyProf(p){st.prof=p.id;st.mode=p.mode;st.rage=p.rage;st.pct=p.pct;st.fx=p.fx;paint();save();if(!st.ok){toast("Đã nhớ, kết nối rồi gửi");return}try{await send(0x04,[p.mode]);await sleep(80);await send(0x09,[p.rage]);await sleep(80);if(p.rage===1)await send(0x05,[p.pct]);await send(0x06,[1]);await send(0x07,[p.fx]);toast(p.name)}catch(e){toast(e.message)}}
 load();paint();setInterval(tickRun,1000);
 $("connect").onclick=ask;
-$("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
+$("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("bg").onclick=closeSh;
 $("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
