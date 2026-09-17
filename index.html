@@ -18,7 +18,6 @@ button,input{font:inherit}
 .dot{width:16px;height:16px;border-radius:50%;background:#e5e7eb;color:#fff;display:grid;place-items:center;font-size:10px}
 .dot.ok{background:#22c55e}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;padding:8px 6px}
-.ic{font-size:16px}
 .val{font-weight:800;font-size:13px;margin-top:2px}
 .lbl{color:#6b7280;font-size:10px}
 .sw{width:42px;height:24px;border:0;border-radius:99px;background:#e5e7eb;position:relative;margin:0 auto}
@@ -35,7 +34,7 @@ button,input{font:inherit}
 .btn{border:0;border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px}
 .g{background:#22c55e;color:#fff}
 .n{background:#f3f4f6}
-.log{background:#0b1220;color:#86efac;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:110px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.log{background:#0b1220;color:#86efac;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:100px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .hint{color:#6b7280;font-size:12px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px}
 .bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}
@@ -43,8 +42,10 @@ button,input{font:inherit}
 .sh{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(430px,100%);background:#fff;border-radius:20px 20px 0 0;z-index:50;padding:8px 16px 24px;transition:.2s;max-height:88dvh;overflow:auto}
 .sh.show{transform:translate(-50%,0)}
 .opt{display:flex;justify-content:space-between;width:100%;padding:14px 0;border:0;border-bottom:1px solid #f3f4f6;background:0;text-align:left}
-.opt.sel{color:#2563eb;font-weight:700}
-input[type=range]{width:100%}
+.opt.sel{color:#16a34a;font-weight:700}
+input[type=range],input[type=color]{width:100%}
+.swatch{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.swatch button{width:36px;height:36px;border:2px solid #e5e7eb;border-radius:8px}
 </style>
 </head>
 <body>
@@ -72,14 +73,14 @@ input[type=range]{width:100%}
   <div class="st"><span class="dot" id="dot">✓</span><span id="conn">Chưa kết nối</span></div>
 </div>
 <div class="metrics">
-  <div><div class="ic">◎</div><div class="val" id="rpm">—</div><div class="lbl">Tốc độ quạt</div></div>
-  <div><div class="ic">⌁</div><div class="val">PPS</div><div class="lbl">Cấp nguồn</div></div>
-  <div><div class="ic">∿</div><div class="val" id="watt">—</div><div class="lbl">Công suất</div></div>
+  <div><div class="val" id="rpm">—</div><div class="lbl">Tốc độ quạt</div></div>
+  <div><div class="val">PPS</div><div class="lbl">Cấp nguồn</div></div>
+  <div><div class="val" id="watt">—</div><div class="lbl">Công suất</div></div>
   <div><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div></div>
 </div>
 <div class="grid">
   <button class="card on" id="bMode" type="button"><h3>Cài đặt hiệu suất</h3><p id="modeTxt">Cực lạnh</p></button>
-  <button class="card" id="bLight" type="button"><h3>Hiệu ứng ánh sáng</h3><p id="lightTxt">Linh động</p></button>
+  <button class="card" id="bLight" type="button"><h3>Cài đặt hiệu ứng đèn</h3><p id="lightTxt">Ánh sáng chảy</p></button>
   <button class="card" id="bRage" type="button"><h3>Chế độ ép xung</h3><p id="rageTxt">Đóng</p></button>
   <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p id="smartTxt">Đóng</p></button>
 </div>
@@ -102,8 +103,16 @@ var TX="49535343-8841-43f4-a8d4-ecbe34729bb3";
 var RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var OPT=[SVC,"generic_access","device_information"];
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
-var LIGHT=[{id:0,name:"Linh động"},{id:1,name:"Hơi thở"},{id:2,name:"Cầu vồng"},{id:3,name:"Đa sắc PIVA"},{id:4,name:"Hiệu ứng 4"},{id:5,name:"Hiệu ứng 5"},{id:6,name:"Hiệu ứng 6"},{id:7,name:"Hiệu ứng 7"}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:0,rage:0,pct:100,smart:false,temp:38};
+var LIGHT=[
+  {id:7,name:"Ánh sáng chảy"},
+  {id:1,name:"Nhịp thở"},
+  {id:2,name:"Đuổi theo"},
+  {id:3,name:"Đệm"},
+  {id:4,name:"Sáng liên tục"},
+  {id:5,name:"Vòng sao"},
+  {id:6,name:"Linh động"}
+];
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,smart:false,temp:38,spd:2,multi:true,col:[128,0,255]};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},1600)}
@@ -117,9 +126,18 @@ async function send(cmd,data){
 }
 function rageLabel(){return st.rage===0?"Đóng":("Mức "+st.rage+" · "+st.pct+"%")}
 function modeName(id){var m=MODE.filter(function(x){return x.id===id})[0];return m?m.name:"Cân bằng"}
+function lightName(id){var m=LIGHT.filter(function(x){return x.id===id})[0];return m?m.name:"Ánh sáng chảy"}
 function setSmartUi(){
   $("smartTxt").textContent=st.smart?("Bật · "+st.temp+"\u00b0C"):"Đóng";
   $("bSmart").className="card"+(st.smart?" on":"");
+}
+async function sendLight(){
+  if(!st.ok)return;
+  try{
+    await send(0x07,[st.fx]);
+    await send(0x08,[st.spd]);
+    if(!st.multi) await send(0x08,[1,st.col[0],st.col[1],st.col[2]]);
+  }catch(e){log(e.message)}
 }
 function parse(u){
   if(!u||u[0]!==0x20||u.length<4)return;
@@ -135,6 +153,12 @@ function parse(u){
     $("rageTxt").textContent=rageLabel();
     $("bRage").className="card"+(st.rage?" on":"");
     log("A6 nguồn "+data[0]+" mức "+data[1]+" mode "+data[2]+" quạt "+data[3]+"%");
+    return;
+  }
+  if(cmd===0xA8&&data.length>=2){
+    st.fx=data[1]||st.fx;
+    $("lightTxt").textContent=lightName(st.fx);
+    log("Đèn fx "+data[1]+" raw "+hex(u));
     return;
   }
   if(cmd===0xA9&&data.length>=1){
@@ -155,7 +179,7 @@ async function attach(dev){
   await n.startNotifications();
   n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});
   st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");
-  try{await send(0x04,[]);await send(0x0D,[])}catch(e){}
+  try{await send(0x04,[]);await send(0x07,[]);await send(0x0D,[])}catch(e){}
 }
 async function ask(){
   if(!navigator.bluetooth){toast("Cần Chrome Android");return}
@@ -181,12 +205,26 @@ $("bMode").onclick=function(){
   };
 };
 $("bLight").onclick=function(){
-  openSh("<h3>Hiệu ứng ánh sáng</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span><span>'+(st.fx===m.id?"\u2713":"")+'</span></button>'}).join(""));
+  openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+
+    LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'" type="button"><span>'+m.name+'</span></button>'}).join("")+
+    "<p class='hint'>Lựa chọn màu sắc</p>"+
+    "<button class='opt"+(st.multi?" sel":"")+"' id='cm' type='button'>Nhiều màu</button>"+
+    "<button class='opt"+(!st.multi?" sel":"")+"' id='cs' type='button'>Một màu</button>"+
+    "<p class='hint'>Tốc độ hiệu ứng đèn</p><input id='spd' type='range' min='1' max='4' value='"+st.spd+"'/>"+
+    "<div id='colbox' style='display:"+(st.multi?"none":"block")+"'><p class='hint'>Chọn màu</p><input id='col' type='color' value='#8000FF'/></div>"+
+    "<div class='row'><button class='btn g' id='applyL' type='button'>Gửi đèn</button></div>");
   $("body").onclick=async function(e){
-    var b=e.target.closest("[data-id]");if(!b)return;
-    st.fx=+b.getAttribute("data-id");$("lightTxt").textContent=LIGHT[st.fx].name;closeSh();
-    if(!st.ok)return;try{await send(0x07,[st.fx])}catch(err){log(err.message)}
+    var b=e.target.closest("[data-fx]");
+    if(b){st.fx=+b.getAttribute("data-fx");$("lightTxt").textContent=lightName(st.fx);if(st.ok)try{await send(0x07,[st.fx])}catch(err){log(err.message)}}
   };
+  $("cm").onclick=function(){st.multi=true;$("colbox").style.display="none"};
+  $("cs").onclick=function(){st.multi=false;$("colbox").style.display="block"};
+  $("spd").oninput=function(){st.spd=+this.value};
+  $("col").oninput=function(){
+    var h=this.value.replace("#","");
+    st.col=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+  };
+  $("applyL").onclick=sendLight;
 };
 $("bRage").onclick=function(){
   openSh("<h3>Chế độ ép xung</h3>"+
