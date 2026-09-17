@@ -2,128 +2,109 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>PIVA B3 Pro Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>PIVA B3PRO</title>
   <style>
-    :root { --bg:#07080c; --card:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.12); --text:#f4f6fb; --muted:#9aa3b5; }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{min-height:100dvh;font-family:ui-sans-serif,system-ui,sans-serif;color:var(--text);background:radial-gradient(900px 500px at 10% -10%,rgba(124,92,255,.35),transparent 55%),#07080c}
-    .wrap{max-width:980px;margin:0 auto;padding:24px 18px 48px}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
-    .logo{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#fff;color:#111;font-weight:800}
-    .brand{display:flex;gap:12px;align-items:center}
-    .sub{color:var(--muted);font-size:12px}
-    .status{font-size:12px;padding:8px 12px;border-radius:999px;border:1px solid var(--stroke)}
-    .status.on{color:#7dffb3}
-    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
-    @media(max-width:820px){.grid{grid-template-columns:1fr}}
-    .card{background:rgba(255,255,255,.06);border:1px solid var(--stroke);border-radius:24px;padding:20px}
-    .device{min-height:380px;display:flex;flex-direction:column;align-items:center;justify-content:center}
-    .ring{width:min(72vw,300px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#ff3b3b,#ffb000,#2dff7e,#00d4ff,#6a5cff,#ff3bd4,#ff3b3b);padding:14px;animation:spin 8s linear infinite;animation-play-state:paused}
-    .ring.live{animation-play-state:running}
-    .core{width:100%;height:100%;border-radius:50%;background:#f4f6fb;display:grid;place-items:center;color:#1a1d27}
-    .core b{font-size:64px}
-    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;width:100%}
-    .stat{background:rgba(0,0,0,.25);border-radius:16px;padding:12px;text-align:center}
-    .stat span{display:block;color:var(--muted);font-size:11px}
-    button{cursor:pointer;color:#fff;background:#171923;border:1px solid var(--stroke);border-radius:14px;padding:12px 14px;font-weight:600}
-    button.primary{background:linear-gradient(135deg,#7c5cff,#4aa8ff);border:0}
-    button.danger{background:#2a1218;color:#ff8ea3}
-    button.active{outline:2px solid #7c5cff}
-    .row,.levels{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-    .levels{display:grid;grid-template-columns:repeat(4,1fr)}
-    label{display:block;font-size:12px;color:var(--muted);margin:12px 0 8px}
-    input[type=range]{width:100%}
-    .log{height:120px;overflow:auto;font:12px/1.5 ui-monospace,monospace;background:rgba(0,0,0,.35);border-radius:14px;padding:10px;color:#b8c0d4}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; background: #fff; color: #111827; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; }
+    body { max-width: 430px; margin: 0 auto; min-height: 100vh; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px; position: sticky; top: 0; background: #fff; z-index: 20; }
+    .topbar h1 { font-size: 18px; margin: 0; }
+    .icon-btn { width: 36px; height: 36px; border: 0; background: transparent; font-size: 20px; }
+    .hero { position: relative; padding: 12px 20px; }
+    .brand-side { position: absolute; right: 10px; top: 40px; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; color: #9ca3af; letter-spacing: 2px; }
+    .logo { width: 180px; height: 180px; margin: 10px auto 8px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(#ff4d4d,#ffd166,#22c55e,#38bdf8,#a78bfa,#ff4d4d); color: #fff; font-size: 42px; font-weight: 800; box-shadow: 0 16px 24px rgba(0,0,0,.12); }
+    .status-row { display: flex; justify-content: center; align-items: center; gap: 6px; font-weight: 600; }
+    .dot { width: 16px; height: 16px; border-radius: 50%; background: #e5e7eb; display: grid; place-items: center; font-size: 11px; }
+    .dot.ok { background: #22c55e; color: #fff; }
+    .dot.busy { background: #f59e0b; color: #fff; }
+    .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; padding: 12px 10px; text-align: center; }
+    .metric .ico { width: 34px; height: 34px; margin: 0 auto 6px; border-radius: 50%; background: #111; color: #fff; display: grid; place-items: center; }
+    .metric .val { font-weight: 800; font-size: 13px; }
+    .metric .lbl { color: #6b7280; font-size: 11px; }
+    .toggle-mini { width: 42px; height: 24px; border-radius: 99px; border: 0; background: #e5e7eb; position: relative; }
+    .toggle-mini.on { background: #22c55e; }
+    .toggle-mini i { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; }
+    .toggle-mini.on i { left: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px 24px; }
+    .card { background: #f3f4f6; border-radius: 18px; padding: 14px; min-height: 96px; border: 1.5px solid transparent; position: relative; }
+    .card.active { background: #f0fdf4; border-color: #22c55e; }
+    .card h3 { margin: 18px 0 2px; font-size: 15px; }
+    .card p { margin: 0; color: #6b7280; font-size: 13px; }
+    .card .mark { position: absolute; top: 12px; right: 12px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #d1d5db; }
+    .card.active .mark { border-color: #22c55e; background: #22c55e; box-shadow: inset 0 0 0 3px #fff; }
+    .card .lead { position: absolute; top: 12px; left: 14px; }
+    .adv { padding: 0 12px 40px; }
+    .warn { background: #fff7ed; color: #9a3412; border-radius: 12px; padding: 10px 12px; font-size: 12px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+    .btn { border: 0; border-radius: 10px; padding: 10px 12px; font-weight: 700; }
+    .btn.green { background: #22c55e; color: #fff; }
+    .btn.ghost { background: #f3f4f6; }
+    .btn.dark { background: #111; color: #fff; }
+    .btn:disabled { opacity: .45; }
+    .log { background: #0b1220; color: #d1fae5; font-family: ui-monospace,monospace; font-size: 11px; padding: 10px; border-radius: 12px; height: 160px; overflow: auto; white-space: pre-wrap; }
+    input, select { width: 100%; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; }
+    select.slim { width: auto; min-width: 160px; }
+    label.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; margin: 6px 0; }
+    .hint { color: #6b7280; font-size: 12px; }
+    .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 40; }
+    .sheet-bg.show { display: block; }
+    .sheet { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%) translateY(110%); width: min(430px,100%); background: #fff; border-radius: 20px 20px 0 0; z-index: 50; padding: 8px 16px 24px; transition: .25s; max-height: 86vh; overflow: auto; }
+    .sheet.open { transform: translateX(-50%) translateY(0); }
+    .grab { width: 42px; height: 4px; background: #e5e7eb; border-radius: 99px; margin: 8px auto 14px; }
+    .opt { display: flex; justify-content: space-between; padding: 14px 4px; border-bottom: 1px solid #f3f4f6; }
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #111; color: #fff; padding: 10px 14px; border-radius: 12px; display: none; z-index: 80; }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="brand"><div class="logo">A</div><div><h1>PIVA B3 Pro</h1><div class="sub">BornforEsports · 25W</div></div></div>
-    <div id="bleStatus" class="status">Chua ket noi</div>
-  </header>
-  <div class="grid">
-    <section class="card device">
-      <div id="ring" class="ring"><div class="core"><b>A</b></div></div>
-      <div class="stats">
-        <div class="stat"><span>Nhiet do</span><strong id="tempVal">--C</strong></div>
-        <div class="stat"><span>Quat</span><strong id="rpmVal">0 RPM</strong></div>
-        <div class="stat"><span>Cong suat</span><strong id="wattVal">0W</strong></div>
-      </div>
-    </section>
-    <section class="card">
-      <div class="row">
-        <button class="primary" id="btnConnect">Ket noi Bluetooth</button>
-        <button id="btnDemo">Gia lap</button>
-        <button class="danger" id="btnPower">Tat</button>
-      </div>
-      <label>Muc lam lanh</label>
-      <div class="levels">
-        <button data-level="1">ECO</button>
-        <button data-level="2">NORM</button>
-        <button data-level="3">GAME</button>
-        <button data-level="4">TURBO</button>
-      </div>
-      <label>Toc do quat: <span id="speedLabel">40%</span></label>
-      <input id="speed" type="range" min="0" max="100" value="40" />
-      <label>RGB</label>
-      <div class="row">
-        <button data-rgb="off">Off</button>
-        <button data-rgb="static">Static</button>
-        <button data-rgb="breath">Breath</button>
-        <button data-rgb="rainbow" class="active">Rainbow</button>
-      </div>
-      <input id="color" type="color" value="#7c5cff" style="width:100%;height:42px;border:0;background:transparent" />
-      <div class="log" id="log"></div>
-    </section>
+  <div class="topbar">
+    <button class="icon-btn" id="btnBack">‹</button>
+    <h1>B3PRO</h1>
+    <button class="icon-btn" id="btnMenu">☰</button>
   </div>
-</div>
-<script>
-const LEVELS={1:{rpm:1800,watt:8},2:{rpm:2800,watt:14},3:{rpm:4200,watt:20},4:{rpm:5454,watt:25}};
-const state={on:false,demo:false,level:2,speed:40,rgb:'rainbow',device:null,characteristic:null};
-const $=id=>document.getElementById(id);
-const log=msg=>{const el=$('log');el.textContent=`[${new Date().toLocaleTimeString()}] ${msg}\n`+el.textContent;};
-function render(){
-  $('ring').classList.toggle('live',state.on&&state.rgb!=='off');
-  $('bleStatus').textContent=state.device?'BLE':state.demo?'Demo':'Off';
-  $('bleStatus').classList.toggle('on',!!(state.device||state.demo));
-  $('btnPower').textContent=state.on?'Tat':'Bat';
-  const spec=LEVELS[state.level];
-  const rpm=state.on?Math.round(spec.rpm*(0.4+state.speed/160)):0;
-  const watt=state.on?(spec.watt*(0.45+state.speed/180)).toFixed(1):'0';
-  const temp=state.on?(36-state.level*3-state.speed/25).toFixed(1):'--';
-  $('rpmVal').textContent=rpm+' RPM';
-  $('wattVal').textContent=watt+'W';
-  $('tempVal').textContent=temp==='--'?'--C':temp+'C';
-  $('speedLabel').textContent=state.speed+'%';
-}
-async function send(cmd,payload={}){
-  const packet=JSON.stringify({cmd,...payload,ts:Date.now()});
-  log('TX '+packet);
-  if(state.characteristic){try{await state.characteristic.writeValue(new TextEncoder().encode(packet));}catch(e){log(e.message);}}
-}
-$('btnDemo').onclick=()=>{state.demo=true;state.on=true;render();send('power',{on:true});};
-$('btnPower').onclick=()=>{state.on=!state.on;render();send('power',{on:state.on});};
-document.querySelectorAll('[data-level]').forEach(btn=>btn.onclick=()=>{state.level=+btn.dataset.level;document.querySelectorAll('[data-level]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();send('level',{level:state.level});});
-document.querySelectorAll('[data-rgb]').forEach(btn=>btn.onclick=()=>{state.rgb=btn.dataset.rgb;document.querySelectorAll('[data-rgb]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();send('rgb',{mode:state.rgb,color:$('color').value});});
-$('speed').oninput=e=>{state.speed=+e.target.value;render();};
-$('speed').onchange=()=>send('speed',{speed:state.speed});
-$('btnConnect').onclick=async()=>{
-  if(!navigator.bluetooth){log('Can Chrome + HTTPS/localhost');return;}
-  try{
-    const device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:['generic_access','battery_service']});
-    state.device=device;
-    const server=await device.gatt.connect();
-    const services=await server.getPrimaryServices();
-    log('GATT '+device.name+' services '+services.map(s=>s.uuid).join(', '));
-    render();
-  }catch(e){log(e.message);}
-};
-document.querySelector('[data-level="2"]').classList.add('active');
-render();
-log('Ready. Demo mode works. Real BLE UUID still missing from APK.');
-</script>
+  <div class="hero">
+    <div class="brand-side">PIVA PERIPHERALS</div>
+    <div class="logo">A</div>
+    <div class="status-row"><span class="dot" id="connDot">✓</span><span id="connText">Chua ket noi</span></div>
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="ico">◎</div><div class="val" id="rpmVal">—<small>RPM</small></div><div class="lbl">Toc do quat</div></div>
+    <div class="metric"><div class="ico">⌁</div><div class="val" id="ppsVal">—</div><div class="lbl">PPS</div></div>
+    <div class="metric"><div class="ico">∿</div><div class="val" id="wattVal">—</div><div class="lbl">Cong suat</div></div>
+    <div class="metric"><button class="toggle-mini on" id="pwrToggle" type="button"><i></i></button><div class="val" id="pwrVal">ON</div><div class="lbl">Tan nhiet</div></div>
+  </div>
+  <div class="grid">
+    <div class="card active" data-sheet="mode"><span class="lead">☰</span><span class="mark"></span><h3>Che do hieu nang</h3><p id="modeLabel">Cuc lanh</p></div>
+    <div class="card" data-sheet="light"><span class="lead">●</span><button class="toggle-mini on" id="lightToggle" style="position:absolute;top:10px;right:10px" type="button"><i></i></button><h3>Hieu ung anh sang</h3><p id="lightLabel">Linh dong</p></div>
+    <div class="card" data-sheet="rage"><span class="lead">◎</span><span class="mark"></span><h3>Che do ep xung</h3><p id="rageLabel">Dong</p></div>
+    <div class="card" data-sheet="smart"><span class="lead">◉</span><span class="mark"></span><h3>Dieu khien thong minh</h3><p id="smartLabel">Dong</p></div>
+    <div class="card" data-sheet="protect"><span class="lead">🔒</span><h3>Co che bao ve</h3><p id="protectLabel">Hieu nang & den</p></div>
+    <div class="card" data-sheet="fw"><span class="lead">▣</span><h3>Firmware</h3><p id="fwLabel">V212</p></div>
+  </div>
+  <div class="adv">
+    <div class="warn">Web Bluetooth tu APK Piva 1.7.3. UUID GATT da trich. Can Chrome/Edge + HTTPS.</div>
+    <div class="row">
+      <button class="btn green" id="btnConnect">Ket noi B3PRO</button>
+      <button class="btn ghost" id="btnScanAll">Quet tat ca</button>
+      <button class="btn ghost" id="btnReconnect">Reconnect</button>
+      <button class="btn ghost" id="btnDisconnect">Ngat</button>
+      <button class="btn ghost" id="btnQuery">Hoi trang thai</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="autoReconnect" checked /> Tu reconnect</label>
+    <label class="chk"><input type="checkbox" id="autoPoll" checked /> Poll 2s</label>
+    <div class="row">
+      <select class="slim" id="codecSel"><option value="a55a">A5 5A XOR</option><option value="aa55">AA 55 SUM</option><option value="raw">Raw</option></select>
+      <select class="slim" id="chunkSel"><option value="20">Chunk 20B</option><option value="40">40B</option><option value="0">No chunk</option></select>
+    </div>
+    <div class="hint" id="devInfo">Chua chon thiet bi.</div>
+    <div class="log" id="log"></div>
+    <input id="hexInput" placeholder="HEX thô" />
+    <div class="row"><button class="btn dark" id="btnSendHex">Gui HEX</button><button class="btn ghost" id="btnClearLog">Xoa log</button></div>
+  </div>
+  <div class="sheet-bg" id="sheetBg"></div>
+  <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
 </body>
 </html>
