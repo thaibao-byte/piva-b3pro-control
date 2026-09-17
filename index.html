@@ -61,10 +61,9 @@ button{font:inherit}
   <button class="card" id="bFx" type="button"><h3>Hiệu ứng</h3><p>Gửi lệnh 07</p></button>
 </div>
 <div class="box">
-  <div class="warn">Log 20:13 đã xác nhận: đọc RPM sống, tắt/bật nguồn bằng lệnh 0A. Các nút kia gửi đúng khung 20 vừa dò được.</div>
+  <div class="warn">Nút kết nối giờ hiện mọi máy Bluetooth. Chọn đúng tên B3PRO. Tắt app Piva trước. Máy đang bị giữ kết nối thì rút nguồn 2 giây rồi cắm lại.</div>
   <div class="row">
     <button class="btn g" id="connect" type="button">Kết nối B3PRO</button>
-    <button class="btn n" id="scan" type="button">Quét tất cả</button>
     <button class="btn n" id="dis" type="button">Ngắt</button>
     <button class="btn n" id="copy" type="button">Chép nhật ký</button>
   </div>
@@ -119,17 +118,17 @@ async function attach(dev){
   st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";
   toast("Đã kết nối");
 }
-async function ask(all){
+async function ask(){
   if(!navigator.bluetooth){toast("Cần Chrome Android");return}
+  log("Mở danh sách mọi máy Bluetooth…");
   try{
-    var opt=all?{acceptAllDevices:true,optionalServices:OPT}:{filters:[{namePrefix:"B3"},{namePrefix:"PIVA"},{namePrefix:"B3PRO"},{services:[SVC]}],optionalServices:OPT};
-    await attach(await navigator.bluetooth.requestDevice(opt));
+    var dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:OPT});
+    await attach(dev);
   }catch(e){log("Lỗi: "+(e.message||e.name||"không rõ"))}
 }
-$("connect").onclick=function(){ask(false)};
-$("scan").onclick=function(){ask(true)};
+$("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
-$("back").onclick=function(){if(st.ok)$("dis").click();else $("connect").click()};
+$("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("copy").onclick=function(){navigator.clipboard&&navigator.clipboard.writeText($("log").textContent).then(function(){toast("Đã chép")})};
 $("pwr").onclick=async function(){
   if(!st.ok){toast("Kết nối trước");return}
@@ -160,7 +159,7 @@ $("bFx").onclick=async function(){
   st.fx=(st.fx+1)%6;
   try{await send(0x07,[st.fx]);toast("Hiệu ứng "+st.fx)}catch(e){log(e.message)}
 };
-log("Sẵn sàng. Nguồn = lệnh 0A (đã tắt quạt về 0 RPM trong log 20:13).");
+log("Sẵn sàng. Bấm Kết nối rồi chọn B3PRO trong danh sách.");
 })();
 </script>
 </body>
