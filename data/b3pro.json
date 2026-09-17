@@ -1,26 +1,95 @@
 {
-  "model": "B3PRO",
-  "brand": ["PIVA", "BORNEFORESPORTS"],
-  "type": "magnetic-semiconductor-phone-cooler",
-  "power_w": 25,
-  "fan_blades": 7,
-  "max_rpm": 5454,
-  "weight_g": 80,
-  "cooling_area_mm2": 2298,
-  "material": "1060 aluminum",
-  "color": "white",
-  "rgb": true,
-  "power_port": "USB-C",
-  "cable": "1.2m double Type-C",
-  "mount": ["magnetic", "clip", "steel-sheet"],
-  "levels": [
-    {"id": 1, "name": "ECO", "alias": "silent", "watt": 8, "rpm": 1800},
-    {"id": 2, "name": "NORM", "alias": "balance", "watt": 14, "rpm": 2800},
-    {"id": 3, "name": "GAME", "alias": "overclock", "watt": 20, "rpm": 4200},
-    {"id": 4, "name": "TURBO", "alias": "ai-max", "watt": 25, "rpm": 5454}
-  ],
+  "source_apk": "Piva-1.7.3 (1)_1.apk",
+  "package_paths": {
+    "frame_codec": "package:wuyingzi/src/features/ble/protocols/radiator_frame_codec.dart",
+    "command_service": "package:wuyingzi/src/features/radiator/services/radiator_command_service.dart",
+    "state": "package:wuyingzi/src/features/radiator/models/radiator_state.dart",
+    "enums": "package:wuyingzi/src/features/radiator/models/radiator_enums.dart",
+    "configs": "package:wuyingzi/src/features/devices/configs/radiator_configs.dart"
+  },
+  "model_names": ["B3PRO", "B3Pro"],
+  "asset": "assets/piva/devices/b3pro.png",
   "ble": {
-    "status": "unknown",
-    "note": "Official APK not unpacked. Web Bluetooth discovers services at runtime."
-  }
+    "stack": "flutter_blue_plus",
+    "service": "49535343-fe7d-4ae5-8fa9-9fafd205e455",
+    "write": "49535343-8841-43f4-a8d4-ecbe34729bb3",
+    "notify": "49535343-1e4d-4bd9-ba61-23c647249616",
+    "cccd": "00002902-0000-1000-8000-00805f9b34fb",
+    "note": "ISSC/Microchip UART. Day du UUID nam plaintext trong libapp.so."
+  },
+  "protocol": {
+    "classes": ["RadiatorFrameCodec", "RadiatorCommandService", "RadiatorProtocolConfig"],
+    "uses_new_protocol_flag": "usesNewProtocol",
+    "new_protocol_encode": "toNewProtocolBytes",
+    "legacy_status": "RadiatorState.fromLegacy22Bytes",
+    "legacy_status_length": 22,
+    "opcodes_in_plaintext": false,
+    "note": "Flutter AOT compile; bang opcode khong nam dang chu trong APK."
+  },
+  "commands_from_apk": [
+    "setPower",
+    "setHomeMode",
+    "setLedEnabled",
+    "setLedEffect",
+    "setLedParam",
+    "setLightEnabled",
+    "setLightEffect",
+    "setRageEnabled",
+    "setZhuoDaMode",
+    "setPidParam",
+    "setPidTargetTemperature",
+    "setLowProtection",
+    "setRefOverclockLevel",
+    "setMotorOverclockPercent",
+    "changeOverclockMode"
+  ],
+  "home_modes": ["extremeCold", "energySaving", "silent", "temperatureControl"],
+  "home_mode_labels_en": ["Extreme Cold", "Energy Saving", "Silent", "Temperature Control"],
+  "led_effects_en": [
+    "Breathing",
+    "Rainbow Breathing",
+    "Rainbow Running",
+    "White Breathing",
+    "Blue Breathing",
+    "Blue-White Breathing",
+    "Blue Low-White Running",
+    "Blue-White Blink",
+    "Colorful Piva",
+    "Colorful",
+    "Pulse"
+  ],
+  "state_fields": [
+    "canTogglePower",
+    "isCoolingOn",
+    "isLightEnabled",
+    "isLightOn",
+    "fanSpeedValue",
+    "devicePowerValue",
+    "powerSupplyType",
+    "powerType",
+    "firmwareVersion",
+    "firmwareVersionText",
+    "availableCoolingModes",
+    "availableLedEffects",
+    "usesNewProtocol",
+    "supportsRageSettings",
+    "supportsZhuoDaSettings",
+    "supportsPidSettings",
+    "supportsPidTempControl",
+    "supportsHomeMode",
+    "lowProtectionOn",
+    "lowTempProtectionOn",
+    "hasNtcProtection",
+    "ntcProtecting",
+    "isOverclockModeOn"
+  ],
+  "power_notes_from_apk": [
+    "Efficiency Mode requires PPS power.",
+    "Efficiency mode is only supported with PPS"
+  ],
+  "protection_notes_from_apk": [
+    "Low Temperature Protection",
+    "NTC Error Protection",
+    "When an NTC sensor fault is detected, the device enters protection automatically and cannot be disabled."
+  ]
 }
