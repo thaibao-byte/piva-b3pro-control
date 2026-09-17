@@ -35,8 +35,7 @@ button,input{font:inherit}
 .btn{border:0;border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px}
 .g{background:#22c55e;color:#fff}
 .n{background:#f3f4f6}
-.k{background:#111;color:#fff}
-.log{background:#0b1220;color:#bbf7d0;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:180px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.log{background:#0b1220;color:#bbf7d0;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:160px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .hint{color:#6b7280;font-size:12px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px}
 .bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}
@@ -66,7 +65,7 @@ input[type=range]{width:100%}
   <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p>Đóng</p></button>
 </div>
 <div class="box">
-  <div class="warn">Ép xung: lệnh 09 là 3 mức. Thanh quạt thử lệnh 05 với 30–100% (lần trước chỉ thử 0–7 nên chưa ra %). Bấm ô ép xung.</div>
+  <div class="warn">Ép xung: mức = lệnh 09 (0/1/2). % quạt = lệnh 05. Máy chỉ nhận khoảng 80–100% (30 và 50 bị bỏ, 80 đổi byte 64→50).</div>
   <div class="row">
     <button class="btn g" id="connect" type="button">Kết nối B3PRO</button>
     <button class="btn n" id="dis" type="button">Ngắt</button>
@@ -86,12 +85,11 @@ var RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var OPT=[SVC,"generic_access","device_information"];
 var MODE=[{id:3,name:"Cực lạnh"},{id:0,name:"Tiết kiệm"},{id:1,name:"Im lặng"},{id:2,name:"Kiểm soát nhiệt độ"}];
 var LIGHT=[{id:0,name:"Linh động"},{id:1,name:"Hơi thở"},{id:2,name:"Cầu vồng"},{id:3,name:"Đa sắc PIVA"},{id:4,name:"Hiệu ứng 4"},{id:5,name:"Hiệu ứng 5"},{id:6,name:"Hiệu ứng 6"},{id:7,name:"Hiệu ứng 7"}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,light:true,fx:0,rage:0,pct:100};
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:0,rage:0,pct:100};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},1600)}
 function hex(u){return Array.from(u).map(function(b){return ("0"+b.toString(16)).slice(-2)}).join(" ").toUpperCase()}
-function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
 function frame(cmd,data){data=data||[];var p=[0x20,cmd,data.length].concat(data);p.push(sum8(p));return p}
 async function send(cmd,data){
@@ -99,13 +97,20 @@ async function send(cmd,data){
   var p=frame(cmd,data);log("Gửi "+hex(p));
   await st.w.writeValueWithoutResponse(new Uint8Array(p));
 }
+function rageLabel(){return st.rage===0?"Đóng":("Mức "+st.rage+" · "+st.pct+"%")}
 function parse(u){
   if(!u||u[0]!==0x20||u.length<4)return;
   var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
   if(cmd===0xA5&&data.length>=7){
-    var rpm=data[3]|(data[4]<<8);
-    $("rpm").textContent=rpm+" RPM";
+    $("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";
     $("watt").textContent=data[0]+"W";
+    return;
+  }
+  if(cmd===0xA6&&data.length>=4){
+    st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];
+    $("rageTxt").textContent=rageLabel();
+    $("bRage").className="card"+(st.rage?" on":"");
+    log("A6 nguồn "+data[0]+" mức "+data[1]+" mode "+data[2]+" quạt "+data[3]+"%");
     return;
   }
   if(cmd===0x51)log("Từ chối "+hex(u));
@@ -113,7 +118,6 @@ function parse(u){
 }
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
-function rageLabel(){return st.rage===0?"Đóng":("Mức "+st.rage+" · quạt "+st.pct+"%")}
 async function attach(dev){
   st.dev=dev;$("info").textContent="Thiết bị: "+(dev.name||"(không tên)");
   log("Chọn "+(dev.name||dev.id));
@@ -124,6 +128,7 @@ async function attach(dev){
   await n.startNotifications();
   n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});
   st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");
+  try{await send(0x04,[])}catch(e){}
 }
 async function ask(){
   if(!navigator.bluetooth){toast("Cần Chrome Android");return}
@@ -157,33 +162,24 @@ $("bLight").onclick=function(){
   };
 };
 $("bRage").onclick=function(){
-  openSh("<h3>Chế độ ép xung</h3><p class='hint'>Mức 0–2 là lệnh 09 đã dò được. Thanh quạt gửi lệnh 05 với 30–100.</p>"+
+  openSh("<h3>Chế độ ép xung</h3><p class='hint'>Mức 09. Quạt lệnh 05, máy kẹp khoảng 80–100%.</p>"+
     "<button class='opt"+(st.rage===0?" sel":"")+"' id='r0' type='button'>Đóng</button>"+
     "<button class='opt"+(st.rage===1?" sel":"")+"' id='r1' type='button'>Mức 1</button>"+
     "<button class='opt"+(st.rage===2?" sel":"")+"' id='r2' type='button'>Mức 2</button>"+
-    "<p class='hint'>Tốc độ quạt "+st.pct+"%</p><input id='rng' type='range' min='30' max='100' value='"+st.pct+"'/>"+
-    "<div class='row'><button class='btn g' id='apply' type='button'>Gửi % quạt</button><button class='btn n' id='prb' type='button'>Dò % 30/50/80/100</button></div>");
+    "<p class='hint' id='pctLbl'>Tốc độ quạt "+st.pct+"%</p><input id='rng' type='range' min='80' max='100' value='"+Math.max(80,st.pct)+"'/>"+
+    "<div class='row'><button class='btn g' id='apply' type='button'>Gửi % quạt</button></div>");
   async function setLv(n){st.rage=n;$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(n?" on":"");if(st.ok)try{await send(0x09,[n])}catch(e){log(e.message)}}
   $("r0").onclick=function(){setLv(0)};
   $("r1").onclick=function(){setLv(1)};
   $("r2").onclick=function(){setLv(2)};
-  $("rng").oninput=function(){st.pct=+this.value};
+  $("rng").oninput=function(){$("pctLbl").textContent="Tốc độ quạt "+this.value+"%";st.pct=+this.value};
   $("apply").onclick=async function(){
     st.pct=+$("rng").value;$("rageTxt").textContent=rageLabel();
     if(!st.ok)return;
-    try{await send(0x05,[st.pct]);await sleep(200);await send(0x09,[st.rage,st.pct])}catch(e){log(e.message)}
-  };
-  $("prb").onclick=async function(){
-    if(!st.ok){toast("Kết nối trước");return}
-    var pcts=[30,50,80,100];
-    for(var i=0;i<pcts.length;i++){
-      log("Thử quạt "+pcts[i]+"%");
-      try{await send(0x05,[pcts[i]]);await sleep(400);await send(0x09,[2,pcts[i]]);await sleep(400)}catch(e){log(e.message)}
-    }
-    toast("Xong dò % — xem RPM và chép nhật ký");
+    try{await send(0x05,[st.pct])}catch(e){log(e.message)}
   };
 };
-$("bSmart").onclick=function(){toast("PID trên máy này đang tắt (A9=00)")};
+$("bSmart").onclick=function(){toast("PID trên máy này đang tắt")};
 log("Sẵn sàng.");
 })();
 </script>
