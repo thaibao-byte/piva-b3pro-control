@@ -27,7 +27,7 @@ button,input{font:inherit}
 .box{padding:4px 12px 24px}.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .btn{border:0;border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px}
 .g{background:#22c55e;color:#fff}.n{background:#f3f4f6}.r{color:#b91c1c}
-.log{background:#0b1220;color:#86efac;font:11px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:140px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.log{background:#0b1220;color:#86efac;font:11px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:130px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .hint{color:#6b7280;font-size:12px;line-height:1.45}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px;max-width:90%}
 .bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}.bg.show{display:block}
@@ -68,9 +68,8 @@ input[type=range],input[type=number]{width:100%}
     <button class="btn g" id="connect" type="button">Kết nối B3PRO</button>
     <button class="btn n" id="dis" type="button">Ngắt</button>
     <button class="btn n" id="copy" type="button">Chép nhật ký</button>
-    <button class="btn n" id="probe" type="button">Dò sâu</button>
   </div>
-  <div class="hint" id="info">Nhiệt thấp đã chắc: 0C 01 / 0C 00. RGB lệnh ngắn không đổi A8.</div>
+  <div class="hint" id="info">Bàn làm việc: 0B 01 sau khi bật đèn, không gửi 0A 00.</div>
   <div class="log" id="log"></div>
 </div>
 <div class="bg" id="bg"></div><div class="sh" id="sh"><div id="body"></div></div><div class="toast" id="toast"></div>
@@ -79,7 +78,7 @@ input[type=range],input[type=number]{width:100%}
 var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe34729bb3",RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:7,name:"Ánh sáng chảy"},{id:1,name:"Nhịp thở"},{id:2,name:"Đuổi theo"},{id:3,name:"Đệm"},{id:4,name:"Sáng liên tục"},{id:5,name:"Vòng sao"},{id:6,name:"Linh động"}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,low:false,timer:null,fw:"V212",busy:false};
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,low:false,desk:false,timer:null,fw:"V212"};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
@@ -98,7 +97,7 @@ function parse(u){
   var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
   if(cmd===0xA5&&data.length>=7){$("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";$("watt").textContent=data[0]+"W";if(data[0]>0)$("pps").textContent="PPS";return}
   if(cmd===0xA6&&data.length>=4){st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];$("modeTxt").textContent=modeName(st.mode);$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(st.rage?" on":"");$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";return}
-  if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();log("A7 bảo vệ nhiệt thấp="+(st.low?"bật":"tắt")+" "+hex(u));return}
+  if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();log("A7 nhiệt thấp="+(st.low?"bật":"tắt"));return}
   if(cmd===0xA8){if(data.length>=2){st.fx=data[1]||st.fx;$("lightTxt").textContent=lightName(st.fx)}log("A8 đèn "+hex(u));return}
   if(cmd===0x51)log("Từ chối "+hex(u));else log("Trả "+hex(u));
 }
@@ -118,27 +117,27 @@ async function attach(dev){
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){log("Lỗi: "+(e.message||e.name||"không rõ"))}}
 async function power(on){st.on=on;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){log(e.message)}}
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;if(!min){toast("Đã đóng hẹn giờ");return}toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){power(false);toast("Đã tắt theo lịch")},min*60000)}
-async function probeDeep(){
-  if(!st.ok){toast("Kết nối trước");return}if(st.busy)return;st.busy=true;toast("Dò RGB khung A8 đủ 14 byte");
+async function deskOn(){
+  if(!st.ok){toast("Kết nối trước");return}
+  log("Bàn làm việc Bật: đèn rồi 0B");
   try{
-    log("--- Ghi màu bằng khung A8 14 byte ---");
-    await send(0x06,[1]);await send(0x07,[4]);await sleep(300);
-    var red=[1,4,4,4,0,255,0,0,255,0,0,255,0,0];
-    var grn=[1,4,4,4,0,0,255,0,0,255,0,0,255,0];
-    var blu=[1,4,4,4,0,0,0,255,0,0,255,0,0,255];
-    await send(0x08,red);await sleep(800);await send(0x07,red);await sleep(800);
-    await send(0x08,grn);await sleep(800);await send(0x07,grn);await sleep(800);
-    await send(0x08,blu);await sleep(800);await send(0x07,blu);await sleep(400);
-    log("--- Xong khung 14 byte ---");
-  }catch(e){log(e.message)}st.busy=false;
+    await send(0x06,[1]);await send(0x07,[st.fx||7]);await sleep(200);
+    await send(0x0B,[1]);await sleep(250);await send(0x0B,[1,0]);await sleep(250);await send(0x0B,[2]);
+  }catch(e){log(e.message)}
+  toast("Đã gửi 0B. Xem quạt/TEC và đèn");
+}
+async function deskOff(){
+  if(!st.ok)return;
+  log("Bàn làm việc Tắt: 0B 00");
+  try{await send(0x0B,[0]);await send(0x0A,[1])}catch(e){log(e.message)}
 }
 $("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("copy").onclick=function(){navigator.clipboard&&navigator.clipboard.writeText($("log").textContent).then(function(){toast("Đã chép")})};
-$("probe").onclick=probeDeep;$("bg").onclick=closeSh;
+$("bg").onclick=closeSh;
 $("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
-$("bFw").onclick=function(){openSh("<h3>Firmware</h3><p>"+st.fw+"</p><p class='hint'>YiChip là chip BLE, không phải V212.</p>")};
+$("bFw").onclick=function(){openSh("<h3>Firmware</h3><p>"+st.fw+"</p><p class='hint'>YiChip = chip BLE. App gốc ghi V212.</p>")};
 $("menu").onclick=function(){
   openSh("<h3>Tùy chọn</h3><button class='opt r' id='mDis' type='button'>Ngắt kết nối</button><button class='opt' id='mTimer' type='button'>Tắt nguồn theo lịch trình</button><button class='opt' id='mDesk' type='button'>Chế độ bàn làm việc</button>");
   $("mDis").onclick=function(){closeSh();$("dis").click()};
@@ -147,14 +146,18 @@ $("menu").onclick=function(){
     $("body").onclick=function(e){var b=e.target.closest("[data-m]");if(!b)return;armTimer(+b.getAttribute("data-m"));closeSh()};
     $("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()};
   };
-  $("mDesk").onclick=function(){openSh("<h3>Chế độ bàn làm việc</h3><p class='hint'>Chưa có lệnh tắt TEC giữ đèn.</p>")};
+  $("mDesk").onclick=function(){
+    openSh("<h3>Chế độ bàn làm việc</h3><p class='hint'>App gốc: chỉ đèn, tắt quạt và TEC. Web gửi 0B (rỗng từng bị từ chối). Không gửi tắt nguồn 0A 00.</p><button class='opt' id='den' type='button'>Bật</button><button class='opt' id='ddis' type='button'>Tắt</button>");
+    $("den").onclick=function(){closeSh();deskOn()};
+    $("ddis").onclick=function(){closeSh();deskOff()};
+  };
 };
 $("bMode").onclick=function(){
   openSh("<h3>Cài đặt hiệu suất</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'">'+m.name+'</button>'}).join(""));
   $("body").onclick=async function(e){var b=e.target.closest("[data-id]");if(!b)return;st.mode=+b.getAttribute("data-id");$("modeTxt").textContent=modeName(st.mode);closeSh();if(st.ok)try{await send(0x04,[st.mode])}catch(err){log(err.message)}};
 };
 $("bLight").onclick=function(){
-  openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'">'+m.name+'</button>'}).join("")+"<button class='opt' id='ledOn'>Bật đèn</button><button class='opt' id='ledOff'>Tắt đèn</button><p class='hint'>RGB lệnh ngắn không đổi A8. Dò sâu thử khung 14 byte.</p>");
+  openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'">'+m.name+'</button>'}).join("")+"<button class='opt' id='ledOn'>Bật đèn</button><button class='opt' id='ledOff'>Tắt đèn</button>");
   $("body").onclick=async function(e){var b=e.target.closest("[data-fx]");if(!b)return;st.fx=+b.getAttribute("data-fx");$("lightTxt").textContent=lightName(st.fx);if(st.ok)try{await send(0x06,[1]);await send(0x07,[st.fx])}catch(err){log(err.message)}};
   $("ledOn").onclick=async function(){if(st.ok)try{await send(0x06,[1]);await send(0x07,[st.fx])}catch(e){log(e.message)}};
   $("ledOff").onclick=async function(){if(st.ok)try{await send(0x06,[0])}catch(e){log(e.message)}};
@@ -168,7 +171,7 @@ $("bRage").onclick=function(){
 };
 $("bSmart").onclick=function(){openSh("<h3>Điều khiển thông minh</h3><p class='hint'>0D 01 tắt máy. App gốc PID trên điện thoại.</p>")};
 $("bProt").onclick=function(){
-  openSh("<h3>Cơ chế bảo vệ</h3><p class='hint'>Nhiệt cao luôn bật. Nhiệt thấp = 0C, A7 byte thứ 2.</p><button class='opt' id='lon'>Bật nhiệt thấp</button><button class='opt' id='loff'>Tắt nhiệt thấp</button>");
+  openSh("<h3>Cơ chế bảo vệ</h3><p class='hint'>Nhiệt cao luôn bật. Nhiệt thấp = 0C.</p><button class='opt' id='lon'>Bật nhiệt thấp</button><button class='opt' id='loff'>Tắt nhiệt thấp</button>");
   $("lon").onclick=async function(){if(st.ok)try{await send(0x0C,[1])}catch(e){log(e.message)}};
   $("loff").onclick=async function(){if(st.ok)try{await send(0x0C,[0])}catch(e){log(e.message)}};
 };
