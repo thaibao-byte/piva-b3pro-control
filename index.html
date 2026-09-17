@@ -25,7 +25,7 @@ button,input{font:inherit;color:inherit}
 .tl{left:0;top:28px}.tr{right:0;top:28px}.bl{left:0;bottom:22px}.br{right:0;bottom:22px}
 .st{display:flex;justify-content:center;gap:6px;align-items:center;font-weight:700;margin:-4px 0 6px;font-size:12px}
 .dot{width:8px;height:8px;border-radius:50%;background:#3a4154}.dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-.metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 12px 6px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 12px 6px}
 .m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center}
 .val{font-weight:800;font-size:13px}.lbl{color:var(--dim);font-size:9px;margin-top:2px}
 .sw{width:42px;height:24px;border:0;border-radius:99px;background:#2a3142;position:relative;margin:0 auto}
@@ -64,7 +64,6 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 </div>
 <div class="st"><span class="dot" id="dot"></span><span id="conn">Chưa kết nối</span></div>
 <div class="metrics">
-  <div class="m"><div class="val" id="ntcCold" style="color:var(--cy)">—</div><div class="lbl">NTC mặt lạnh</div></div>
   <div class="m"><div class="val" id="pps">--</div><div class="lbl">Nguồn</div></div>
   <div class="m"><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div></div>
 </div>
@@ -117,24 +116,10 @@ function setProtUi(){$("protTxt").textContent=st.low?"Nhiệt thấp bật":"Nhi
 function save(){try{localStorage.setItem("b3pro",JSON.stringify({mode:st.mode,fx:st.fx,rage:st.rage,pct:st.pct,low:st.low,prof:st.prof,ledSpd:st.ledSpd,ledHex:st.ledHex}))}catch(e){}}
 function load(){try{var j=JSON.parse(localStorage.getItem("b3pro")||"null");if(!j)return;if(j.mode)st.mode=j.mode;if(j.fx)st.fx=j.fx;if(j.rage!=null)st.rage=j.rage;if(j.pct)st.pct=j.pct;if(j.low!=null)st.low=j.low;if(j.prof)st.prof=j.prof;if(j.ledSpd)st.ledSpd=j.ledSpd;if(j.ledHex)st.ledHex=j.ledHex}catch(e){}}
 function paint(){$("modeTxt").textContent=modeName(st.mode);$("lightTxt").textContent=lightName(st.fx);$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(st.rage?" on":"");var p=PROF.filter(function(x){return x.id===st.prof})[0];$("profTxt").textContent=p?p.name:"Chưa chọn";$("bProf").className="card"+(st.prof?" on":"");setProtUi()}
-function parse(u){
-  if(!u||u[0]!==0x20||u.length<4)return;
-  var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
-  if(cmd===0xA5&&data.length>=7){
-    $("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";
-    $("watt").textContent=data[0]+"W";
-    if(data[0]>0)$("pps").textContent="PPS";
-    if(data[1]!=null)$("ntcCold").textContent=data[1]+"°C";
-    var t=guessNtc(data);if(t!=null){st.ntc=t;$("ntc").textContent=t+"°C"}
-    return;
-  }
-  if(cmd===0xA6&&data.length>=4){st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";if(st.on)startRun();else stopRun();paint();save();return}
-  if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}
-  if(cmd===0xA8){if(data.length>=2&&data[1])st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=4)st.ledSpd=data[2];paint()}
-}
+function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));if(cmd===0xA5&&data.length>=7){$("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";$("watt").textContent=data[0]+"W";if(data[0]>0)$("pps").textContent="PPS";var t=guessNtc(data);if(t!=null){st.ntc=t;$("ntc").textContent=t+"°C"}return}if(cmd===0xA6&&data.length>=4){st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";if(st.on)startRun();else stopRun();paint();save();return}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(data.length>=2&&data[1])st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=4)st.ledSpd=data[2];paint()}}
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
-function renderLed(){var L=lightOf(st.fx);var spd=L.speed?'<p class="hint">Tốc độ hiệu ứng đèn</p><div class="spd">'+[1,2,3,4].map(function(n){return "<button type='button' data-sp='"+n+"' class='"+(st.ledSpd===n?"sel":"")+"'>"+(n===1?"Chậm":n===4?"Nhanh":n)+"</button>"}).join("")+"</div>':'';var col=L.color==="one"?'<p class="hint">Lựa chọn màu sắc · Một màu</p><input id="ledc" type="color" value="'+st.ledHex+'"/>':'<p class="hint">Lựa chọn màu sắc · Nhiều màu</p>';openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'">'+m.name+"</button>"}).join("")+col+spd+"<div class='row'><button class='btn g' id='ledGo' type='button'>Gửi đèn</button><button class='btn n' id='ledOff' type='button'>Tắt đèn</button></div>");$("body").onclick=async function(e){var b=e.target.closest("[data-fx]");if(b){st.fx=+b.getAttribute("data-fx");st.prof="";paint();save();renderLed();if(st.ok)try{await send(0x06,[1]);await send(0x07,[st.fx])}catch(err){toast(err.message)}return}var s=e.target.closest("[data-sp]");if(s){st.ledSpd=+s.getAttribute("data-sp");save();renderLed();applyLed()}};var c=$("ledc");if(c)c.oninput=function(){st.ledHex=this.value;save()};$("ledGo").onclick=applyLed;$("ledOff").onclick=async function(){if(st.ok)try{await send(0x06,[0])}catch(e){toast(e.message)}}}
+function renderLed(){var L=lightOf(st.fx);var spd=L.speed?'<p class="hint">Tốc độ hiệu ứng đèn</p><div class="spd">'+[1,2,3,4].map(function(n){return "<button type='button' data-sp='"+n+"' class='"+(st.ledSpd===n?"sel":"")+"'>"+(n===1?"Chậm":n===4?"Nhanh":n)+"</button>"}).join("")+"</div>":"";var col=L.color==="one"?'<p class="hint">Lựa chọn màu sắc · Một màu</p><input id="ledc" type="color" value="'+st.ledHex+'"/>':'<p class="hint">Lựa chọn màu sắc · Nhiều màu</p>';openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'">'+m.name+"</button>"}).join("")+col+spd+"<div class='row'><button class='btn g' id='ledGo' type='button'>Gửi đèn</button><button class='btn n' id='ledOff' type='button'>Tắt đèn</button></div>");$("body").onclick=async function(e){var b=e.target.closest("[data-fx]");if(b){st.fx=+b.getAttribute("data-fx");st.prof="";paint();save();renderLed();if(st.ok)try{await send(0x06,[1]);await send(0x07,[st.fx])}catch(err){toast(err.message)}return}var s=e.target.closest("[data-sp]");if(s){st.ledSpd=+s.getAttribute("data-sp");save();renderLed();applyLed()}};var c=$("ledc");if(c)c.oninput=function(){st.ledHex=this.value;save()};$("ledGo").onclick=applyLed;$("ledOff").onclick=async function(){if(st.ok)try{await send(0x06,[0])}catch(e){toast(e.message)}}}
 async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);await n.startNotifications();n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});dev.addEventListener("gattserverdisconnected",function(){stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối")});st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");resetRun();startRun();startPoll();try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}}
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 async function power(on){st.on=on;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(on)startRun();else stopRun();if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}}
