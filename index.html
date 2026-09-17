@@ -13,7 +13,7 @@ button,input{font:inherit}
 .top h1{margin:0;font-size:17px;font-weight:800}
 .ib{width:40px;height:40px;border:0;background:0;font-size:22px}
 .hero{text-align:center;padding:6px 16px 8px;background:linear-gradient(#f7f7f8,#fff)}
-.cool{width:168px;height:168px;margin:0 auto;filter:drop-shadow(0 10px 16px rgba(0,0,0,.12))}
+.cool{width:160px;height:160px;margin:0 auto;filter:drop-shadow(0 10px 16px rgba(0,0,0,.12))}
 .st{display:flex;justify-content:center;gap:6px;align-items:center;font-weight:700;margin-top:6px}
 .dot{width:14px;height:14px;border-radius:50%;background:#e5e7eb}
 .dot.ok{background:#22c55e}
@@ -35,7 +35,7 @@ button,input{font:inherit}
 .g{background:#22c55e;color:#fff}
 .n{background:#f3f4f6}
 .r{color:#b91c1c}
-.log{background:#0b1220;color:#86efac;font:11px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:120px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.log{background:#0b1220;color:#86efac;font:11px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:150px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .hint{color:#6b7280;font-size:12px;line-height:1.45}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px;max-width:90%}
 .bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}
@@ -70,7 +70,7 @@ input[type=range],input[type=number]{width:100%}
   <button class="card on" id="bMode" type="button"><h3>Chế độ hiệu năng</h3><p id="modeTxt">Cực lạnh</p></button>
   <button class="card" id="bLight" type="button"><h3>Hiệu ứng ánh sáng</h3><p id="lightTxt">Ánh sáng chảy</p></button>
   <button class="card" id="bRage" type="button"><h3>Chế độ ép xung</h3><p id="rageTxt">Đóng</p></button>
-  <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p id="smartTxt">Không gửi lệnh</p></button>
+  <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p>Không gửi lệnh</p></button>
   <button class="card" id="bProt" type="button"><h3>Cơ chế bảo vệ</h3><p>Nhiệt cao luôn bật</p></button>
   <button class="card" id="bFw" type="button"><h3>Phiên bản firmware</h3><p id="fwTxt">V212</p></button>
 </div>
@@ -79,10 +79,9 @@ input[type=range],input[type=number]{width:100%}
     <button class="btn g" id="connect" type="button">Kết nối B3PRO</button>
     <button class="btn n" id="dis" type="button">Ngắt</button>
     <button class="btn n" id="copy" type="button">Chép nhật ký</button>
-    <button class="btn n" id="probeRgb" type="button">Dò RGB</button>
-    <button class="btn n" id="probeProt" type="button">Dò nhiệt thấp</button>
+    <button class="btn g" id="probe" type="button">Dò sâu</button>
   </div>
-  <div class="hint" id="info">Chưa chọn thiết bị. Dò RGB/nhiệt thấp là bài test riêng — nhìn đèn và chép nhật ký A8/A7.</div>
+  <div class="hint" id="info">Dò sâu ~20 giây. Nhìn đèn đổi màu. Không gửi tắt nguồn / 0D 01.</div>
   <div class="log" id="log"></div>
 </div>
 <div class="bg" id="bg"></div>
@@ -98,7 +97,7 @@ var LIGHT=[{id:7,name:"Ánh sáng chảy"},{id:1,name:"Nhịp thở"},{id:2,name
 var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,timer:null,fw:"V212",busy:false};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
-function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
+function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2400)}
 function hex(u){return Array.from(u).map(function(b){return ("0"+b.toString(16)).slice(-2)}).join(" ").toUpperCase()}
 function dec(u){try{return new TextDecoder().decode(u).replace(/\u0000/g,"").trim()}catch(e){return ""}}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
@@ -131,6 +130,7 @@ function parse(u){
   }
   if(cmd===0xA7){log("A7 bảo vệ "+hex(u));return}
   if(cmd===0xA8){if(data.length>=2){st.fx=data[1]||st.fx;$("lightTxt").textContent=lightName(st.fx)}log("A8 đèn "+hex(u));return}
+  if(cmd===0xA9){log("A9 thông minh "+hex(u));return}
   if(cmd===0x51)log("Từ chối "+hex(u));
   else log("Trả "+hex(u));
 }
@@ -175,37 +175,33 @@ function armTimer(min){
   toast("Tắt sau "+min+" phút");
   st.timer=setTimeout(function(){power(false);toast("Đã tắt theo lịch")},min*60000);
 }
-async function probeRgb(){
+async function probeDeep(){
   if(!st.ok){toast("Kết nối trước");return}
-  if(st.busy)return;st.busy=true;
-  log("--- Dò RGB: nhìn vòng đèn đỏ/lục/lam ---");
-  toast("Dò RGB ~8 giây, nhìn đèn");
+  if(st.busy){toast("Đang dò");return}
+  st.busy=true;
+  toast("Dò sâu ~20 giây, nhìn đèn");
   try{
-    await send(0x06,[1]);await sleep(250);
+    log("===== DÒ SÂU BẮT ĐẦU =====");
+    log("1) GET lệnh lạ (không 0A/0D SET)");
+    var gets=[0x01,0x02,0x0B,0x0E,0x0F,0x10,0x11,0x12,0x08,0x0C];
+    for(var i=0;i<gets.length;i++){await send(gets[i],[]);await sleep(280)}
+    log("2) Bảo vệ 0C");
+    var c12=[[1],[0],[1,0],[0,1],[1,1],[0,0]];
+    for(var j=0;j<c12.length;j++){await send(0x0C,c12[j]);await sleep(350)}
+    log("3) RGB — Sáng liên tục, lần lượt đỏ lục lam");
+    await send(0x06,[1]);await sleep(200);
     await send(0x07,[4]);await sleep(400);
-    var tests=[
-      [0x08,[255,0,0]],
-      [0x08,[0,255,0]],
-      [0x08,[0,0,255]],
-      [0x08,[1,128,0,255]],
-      [0x07,[4,2,255,0,0]],
-      [0x07,[4,2,0,255,0]],
-      [0x07,[4,2,0,0,255]]
+    var rgb=[
+      [0x08,[255,0,0]],[0x08,[0,255,0]],[0x08,[0,0,255]],
+      [0x08,[1,255,0,0]],[0x08,[1,0,255,0]],[0x08,[1,0,0,255]],
+      [0x07,[4,1,255,0,0]],[0x07,[4,2,0,255,0]],[0x07,[4,3,0,0,255]],
+      [0x07,[4,2,128,0,255]]
     ];
-    for(var i=0;i<tests.length;i++){await send(tests[i][0],tests[i][1]);await sleep(700)}
-    log("--- Hết dò RGB. Đèn đổi màu = payload đúng. Chép nhật ký ---");
-  }catch(e){log(e.message)}
-  st.busy=false;
-}
-async function probeProt(){
-  if(!st.ok){toast("Kết nối trước");return}
-  if(st.busy)return;st.busy=true;
-  log("--- Dò bảo vệ nhiệt thấp: chỉ 0C, không tắt nguồn ---");
-  toast("Dò 0C, xem A7");
-  try{
-    var tests=[[], [1], [0], [1,0], [0,1]];
-    for(var i=0;i<tests.length;i++){await send(0x0C,tests[i]);await sleep(500)}
-    log("--- Hết dò 0C. Chép các dòng A7 ---");
+    for(var k=0;k<rgb.length;k++){await send(rgb[k][0],rgb[k][1]);await sleep(650)}
+    log("4) Tốc độ đèn 08 01..04");
+    for(var s=1;s<=4;s++){await send(0x08,[s]);await sleep(300)}
+    log("===== DÒ SÂU XONG — chép nhật ký =====");
+    toast("Xong. Chép nhật ký");
   }catch(e){log(e.message)}
   st.busy=false;
 }
@@ -213,8 +209,7 @@ $("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("copy").onclick=function(){navigator.clipboard&&navigator.clipboard.writeText($("log").textContent).then(function(){toast("Đã chép")})};
-$("probeRgb").onclick=probeRgb;
-$("probeProt").onclick=probeProt;
+$("probe").onclick=probeDeep;
 $("bg").onclick=closeSh;
 $("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
 $("bFw").onclick=function(){openSh("<h3>Phiên bản firmware</h3><p>"+st.fw+"</p>")};
@@ -228,7 +223,7 @@ $("menu").onclick=function(){
     $("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()};
   };
   $("mDesk").onclick=function(){
-    openSh("<h3>Chế độ bàn làm việc</h3><p class='hint'>Lệnh tắt TEC giữ đèn chưa dò ra. Nút dưới chỉ bật đèn.</p><button class='opt' id='den' type='button'>Chỉ bật đèn</button>");
+    openSh("<h3>Chế độ bàn làm việc</h3><p class='hint'>Chưa có lệnh tắt TEC giữ đèn. Nút dưới chỉ bật đèn.</p><button class='opt' id='den' type='button'>Chỉ bật đèn</button>");
     $("den").onclick=async function(){closeSh();if(st.ok)try{await send(0x06,[1]);await send(0x07,[st.fx])}catch(e){log(e.message)}};
   };
 };
@@ -242,7 +237,7 @@ $("bMode").onclick=function(){
 };
 $("bLight").onclick=function(){
   openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'" type="button">'+m.name+'</button>'}).join("")+
-    "<button class='opt' id='ledOn' type='button'>Bật đèn</button><button class='opt' id='ledOff' type='button'>Tắt đèn</button><p class='hint'>Muốn dò màu thì dùng nút Dò RGB, chọn Sáng liên tục dễ nhìn.</p>");
+    "<button class='opt' id='ledOn' type='button'>Bật đèn</button><button class='opt' id='ledOff' type='button'>Tắt đèn</button>");
   $("body").onclick=async function(e){
     var b=e.target.closest("[data-fx]");if(!b)return;
     st.fx=+b.getAttribute("data-fx");$("lightTxt").textContent=lightName(st.fx);
@@ -253,19 +248,15 @@ $("bLight").onclick=function(){
 };
 $("bRage").onclick=function(){
   openSh("<h3>Chế độ ép xung</h3><button class='opt' id='r0' type='button'>Đóng</button><button class='opt' id='r1' type='button'>Mức 1</button><button class='opt' id='r2' type='button'>Mức 2</button>"+
-    "<p class='hint' id='pctLbl'>Tốc độ quạt "+st.pct+"% (80–100)</p><input id='rng' type='range' min='80' max='100' value='"+Math.max(80,st.pct)+"'/><div class='row'><button class='btn g' id='apply' type='button'>Gửi % quạt</button></div>");
+    "<p class='hint' id='pctLbl'>Tốc độ quạt "+st.pct+"%</p><input id='rng' type='range' min='80' max='100' value='"+Math.max(80,st.pct)+"'/><div class='row'><button class='btn g' id='apply' type='button'>Gửi % quạt</button></div>");
   async function setLv(n){st.rage=n;$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(n?" on":"");if(st.ok)try{await send(0x09,[n])}catch(e){log(e.message)}}
   $("r0").onclick=function(){setLv(0)};$("r1").onclick=function(){setLv(1)};$("r2").onclick=function(){setLv(2)};
-  $("rng").oninput=function(){$("pctLbl").textContent="Tốc độ quạt "+this.value+"% (80–100)";st.pct=+this.value};
+  $("rng").oninput=function(){$("pctLbl").textContent="Tốc độ quạt "+this.value+"%";st.pct=+this.value};
   $("apply").onclick=async function(){st.pct=+$("rng").value;$("rageTxt").textContent=rageLabel();if(st.ok)try{await send(0x05,[st.pct])}catch(e){log(e.message)}};
 };
-$("bSmart").onclick=function(){
-  openSh("<h3>Điều khiển thông minh</h3><p class='hint'>App gốc PID trên điện thoại. 0D 01 tắt máy — web không gửi.</p>");
-};
-$("bProt").onclick=function(){
-  openSh("<h3>Cơ chế bảo vệ</h3><p class='hint'>Nhiệt cao luôn bật. Nhiệt thấp dùng nút Dò nhiệt thấp rồi gửi nhật ký A7.</p>");
-};
-log("Sẵn sàng.");
+$("bSmart").onclick=function(){openSh("<h3>Điều khiển thông minh</h3><p class='hint'>0D 01 tắt máy. Web không gửi. Dò sâu cũng bỏ lệnh đó.</p>")};
+$("bProt").onclick=function(){openSh("<h3>Cơ chế bảo vệ</h3><p class='hint'>Bấm Dò sâu để lấy A7.</p>")};
+log("Sẵn sàng. Bấm Dò sâu sau khi kết nối.");
 })();
 </script>
 </body>
