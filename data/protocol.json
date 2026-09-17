@@ -1,0 +1,28 @@
+{
+  "frame": "20 | cmd | len | data | sum8",
+  "tx": "49535343-8841-43f4-a8d4-ecbe34729bb3",
+  "rx": "49535343-1e4d-4bd9-ba61-23c647249616",
+  "status": {
+    "cmd": "0xA5",
+    "layout": "watt, unk1, unk2, rpm_le_lo, rpm_le_hi, aux, 00"
+  },
+  "reject": "0x51",
+  "commands": {
+    "0x03": "PID/smart params (A4 always zeros on this firmware)",
+    "0x04": "home mode GET/SET, A6[2]=mode, values 0-3",
+    "0x05": "GET same A6 as 04, SET 0-7 no A6 change",
+    "0x06": "LED enable, 0=off 1=on, reply A8[0]",
+    "0x07": "LED effect 0-7, reply A8[1]",
+    "0x08": "LED GET only",
+    "0x09": "overclock/rage level 0-2, reply A6[1]",
+    "0x0A": "power 0=off 1=on",
+    "0x0C": "protection GET A7",
+    "0x0D": "smart flag GET A9"
+  },
+  "mode_by_power": {
+    "3": "Cực lạnh ~26W ~5500RPM",
+    "0": "~8W",
+    "1": "~8W",
+    "2": "~8W"
+  }
+}
