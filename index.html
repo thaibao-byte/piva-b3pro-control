@@ -8,7 +8,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif}
 body{max-width:430px;margin:0 auto;min-height:100dvh;touch-action:manipulation}
-button{font:inherit}
+button,input{font:inherit}
 .top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px}
 .top h1{margin:0;font-size:18px}
 .ib{width:40px;height:40px;border:0;background:0;font-size:22px}
@@ -30,22 +30,22 @@ button{font:inherit}
 .card h3{margin:0 0 4px;font-size:15px}
 .card p{margin:0;color:#6b7280;font-size:13px}
 .box{padding:0 12px 24px}
-.warn{background:#fff7ed;color:#9a3412;border-radius:12px;padding:10px;font-size:12px;line-height:1.45}
+.warn{background:#ecfdf5;color:#065f46;border-radius:12px;padding:10px;font-size:12px;line-height:1.45}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .btn{border:0;border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px}
 .g{background:#22c55e;color:#fff}
 .n{background:#f3f4f6}
 .k{background:#111;color:#fff}
-.btn:disabled{opacity:.45}
-.log{background:#0b1220;color:#bbf7d0;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.log{background:#0b1220;color:#bbf7d0;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:180px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .hint{color:#6b7280;font-size:12px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px}
 .bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}
 .bg.show{display:block}
-.sh{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(430px,100%);background:#fff;border-radius:20px 20px 0 0;z-index:50;padding:8px 16px 24px;transition:.2s}
+.sh{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(430px,100%);background:#fff;border-radius:20px 20px 0 0;z-index:50;padding:8px 16px 24px;transition:.2s;max-height:88dvh;overflow:auto}
 .sh.show{transform:translate(-50%,0)}
 .opt{display:flex;justify-content:space-between;width:100%;padding:14px 0;border:0;border-bottom:1px solid #f3f4f6;background:0;text-align:left}
 .opt.sel{font-weight:700}
+input[type=range]{width:100%}
 </style>
 </head>
 <body>
@@ -66,14 +66,10 @@ button{font:inherit}
   <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p>Đóng</p></button>
 </div>
 <div class="box">
-  <div class="warn">Dò sâu sẽ hỏi lệnh 00–1F rồi thử giá trị 0–7. Quạt có thể đổi tốc độ. Không gửi OTA. Quan sát máy rồi chép nhật ký.</div>
+  <div class="warn">Ép xung: lệnh 09 là 3 mức. Thanh quạt thử lệnh 05 với 30–100% (lần trước chỉ thử 0–7 nên chưa ra %). Bấm ô ép xung.</div>
   <div class="row">
     <button class="btn g" id="connect" type="button">Kết nối B3PRO</button>
     <button class="btn n" id="dis" type="button">Ngắt</button>
-  </div>
-  <div class="row">
-    <button class="btn k" id="deep" type="button">Dò sâu</button>
-    <button class="btn n" id="stop" type="button">Dừng</button>
     <button class="btn n" id="copy" type="button">Chép nhật ký</button>
   </div>
   <div class="hint" id="info">Chưa chọn thiết bị.</div>
@@ -88,9 +84,9 @@ var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455";
 var TX="49535343-8841-43f4-a8d4-ecbe34729bb3";
 var RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var OPT=[SVC,"generic_access","device_information"];
-var MODE=[{id:0,name:"Cực lạnh"},{id:1,name:"Tiết kiệm"},{id:2,name:"Im lặng"},{id:3,name:"Kiểm soát nhiệt độ"}];
-var LIGHT=[{id:0,name:"Linh động"},{id:1,name:"Hơi thở"},{id:2,name:"Cầu vồng"},{id:3,name:"Đa sắc PIVA"}];
-var st={ok:false,dev:null,w:null,on:true,mode:0,light:true,fx:0,rage:false,busy:false,stop:false};
+var MODE=[{id:3,name:"Cực lạnh"},{id:0,name:"Tiết kiệm"},{id:1,name:"Im lặng"},{id:2,name:"Kiểm soát nhiệt độ"}];
+var LIGHT=[{id:0,name:"Linh động"},{id:1,name:"Hơi thở"},{id:2,name:"Cầu vồng"},{id:3,name:"Đa sắc PIVA"},{id:4,name:"Hiệu ứng 4"},{id:5,name:"Hiệu ứng 5"},{id:6,name:"Hiệu ứng 6"},{id:7,name:"Hiệu ứng 7"}];
+var st={ok:false,dev:null,w:null,on:true,mode:3,light:true,fx:0,rage:0,pct:100};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},1600)}
@@ -110,9 +106,6 @@ function parse(u){
     var rpm=data[3]|(data[4]<<8);
     $("rpm").textContent=rpm+" RPM";
     $("watt").textContent=data[0]+"W";
-    if(rpm===0){st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="Tắt"}
-    else if(!st.on){st.on=true;$("pwr").className="sw on";$("pwrTxt").textContent="Bật"}
-    log("TT watt "+data[0]+" RPM "+rpm+" aux "+data[5]+" raw "+hex(u));
     return;
   }
   if(cmd===0x51)log("Từ chối "+hex(u));
@@ -120,6 +113,7 @@ function parse(u){
 }
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
+function rageLabel(){return st.rage===0?"Đóng":("Mức "+st.rage+" · quạt "+st.pct+"%")}
 async function attach(dev){
   st.dev=dev;$("info").textContent="Thiết bị: "+(dev.name||"(không tên)");
   log("Chọn "+(dev.name||dev.id));
@@ -136,37 +130,9 @@ async function ask(){
   try{await attach(await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:OPT}))}
   catch(e){log("Lỗi: "+(e.message||e.name||"không rõ"))}
 }
-async function deep(){
-  if(!st.ok){toast("Kết nối trước");return}
-  if(st.busy)return;
-  st.busy=true;st.stop=false;$("deep").disabled=true;
-  log("=== DÒ SÂU BẮT ĐẦU ===");
-  var cmd,v;
-  for(cmd=0;cmd<=0x1F && !st.stop;cmd++){
-    if(cmd===0x0A){log("Bỏ qua 0A lúc hỏi (tránh tắt nguồn)");continue}
-    try{await send(cmd,[]);await sleep(280)}catch(e){log(e.message)}
-  }
-  var known=[3,4,5,6,7,8,9];
-  for(var i=0;i<known.length && !st.stop;i++){
-    cmd=known[i];
-    log("--- Chỉnh cmd "+cmd.toString(16)+" ---");
-    for(v=0;v<=7 && !st.stop;v++){
-      try{await send(cmd,[v]);await sleep(320)}catch(e){log(e.message)}
-    }
-  }
-  log("--- PID thử nhiệt ---");
-  if(!st.stop){
-    try{await send(0x03,[1,38]);await sleep(320);await send(0x03,[1,45]);await sleep(320)}catch(e){log(e.message)}
-  }
-  try{await send(0x0A,[1])}catch(e){}
-  log("=== DÒ SÂU XONG ===");
-  st.busy=false;$("deep").disabled=false;toast("Xong dò sâu — chép nhật ký");
-}
 $("connect").onclick=ask;
-$("dis").onclick=function(){st.stop=true;try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
+$("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
-$("deep").onclick=deep;
-$("stop").onclick=function(){st.stop=true;toast("Sẽ dừng sau gói hiện tại")};
 $("copy").onclick=function(){navigator.clipboard&&navigator.clipboard.writeText($("log").textContent).then(function(){toast("Đã chép")})};
 $("bg").onclick=closeSh;
 $("pwr").onclick=async function(){
@@ -178,7 +144,7 @@ $("bMode").onclick=function(){
   openSh("<h3>Chế độ hiệu năng</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span><span>'+(st.mode===m.id?"\u2713":"")+'</span></button>'}).join(""));
   $("body").onclick=async function(e){
     var b=e.target.closest("[data-id]");if(!b)return;
-    st.mode=+b.getAttribute("data-id");$("modeTxt").textContent=MODE[st.mode].name;closeSh();
+    st.mode=+b.getAttribute("data-id");$("modeTxt").textContent=MODE.filter(function(x){return x.id===st.mode})[0].name;closeSh();
     if(!st.ok)return;try{await send(0x04,[st.mode])}catch(err){log(err.message)}
   };
 };
@@ -190,12 +156,35 @@ $("bLight").onclick=function(){
     if(!st.ok)return;try{await send(0x07,[st.fx])}catch(err){log(err.message)}
   };
 };
-$("bRage").onclick=async function(){
-  st.rage=!st.rage;$("rageTxt").textContent=st.rage?"Bật":"Đóng";$("bRage").className="card"+(st.rage?" on":"");
-  if(!st.ok)return;try{await send(0x05,[st.rage?1:0])}catch(e){log(e.message)}
+$("bRage").onclick=function(){
+  openSh("<h3>Chế độ ép xung</h3><p class='hint'>Mức 0–2 là lệnh 09 đã dò được. Thanh quạt gửi lệnh 05 với 30–100.</p>"+
+    "<button class='opt"+(st.rage===0?" sel":"")+"' id='r0' type='button'>Đóng</button>"+
+    "<button class='opt"+(st.rage===1?" sel":"")+"' id='r1' type='button'>Mức 1</button>"+
+    "<button class='opt"+(st.rage===2?" sel":"")+"' id='r2' type='button'>Mức 2</button>"+
+    "<p class='hint'>Tốc độ quạt "+st.pct+"%</p><input id='rng' type='range' min='30' max='100' value='"+st.pct+"'/>"+
+    "<div class='row'><button class='btn g' id='apply' type='button'>Gửi % quạt</button><button class='btn n' id='prb' type='button'>Dò % 30/50/80/100</button></div>");
+  async function setLv(n){st.rage=n;$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(n?" on":"");if(st.ok)try{await send(0x09,[n])}catch(e){log(e.message)}}
+  $("r0").onclick=function(){setLv(0)};
+  $("r1").onclick=function(){setLv(1)};
+  $("r2").onclick=function(){setLv(2)};
+  $("rng").oninput=function(){st.pct=+this.value};
+  $("apply").onclick=async function(){
+    st.pct=+$("rng").value;$("rageTxt").textContent=rageLabel();
+    if(!st.ok)return;
+    try{await send(0x05,[st.pct]);await sleep(200);await send(0x09,[st.rage,st.pct])}catch(e){log(e.message)}
+  };
+  $("prb").onclick=async function(){
+    if(!st.ok){toast("Kết nối trước");return}
+    var pcts=[30,50,80,100];
+    for(var i=0;i<pcts.length;i++){
+      log("Thử quạt "+pcts[i]+"%");
+      try{await send(0x05,[pcts[i]]);await sleep(400);await send(0x09,[2,pcts[i]]);await sleep(400)}catch(e){log(e.message)}
+    }
+    toast("Xong dò % — xem RPM và chép nhật ký");
+  };
 };
-$("bSmart").onclick=function(){toast("Bấm Dò sâu để tìm lệnh PID")};
-log("Sẵn sàng. Kết nối rồi bấm Dò sâu.");
+$("bSmart").onclick=function(){toast("PID trên máy này đang tắt (A9=00)")};
+log("Sẵn sàng.");
 })();
 </script>
 </body>
