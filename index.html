@@ -108,7 +108,27 @@ function startRun(){if(!st.runAt)st.runAt=Date.now();tickRun()}
 function stopRun(){st.runAt=0;tickRun()}
 function resetRun(){st.runAt=0;tickRun()}
 
-function startPoll(){stopPoll();st.poll=setInterval(async function(){if(!st.ok||!st.w)return;try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}},1500)}
+// Tăng tốc quét NTC: chu kỳ 400ms hỏi 1 lần, các lệnh phụ gửi giãn cách để không nghẽn BLE
+function startPoll(){
+  stopPoll();
+  var step=0;
+  st.poll=setInterval(async function(){
+    if(!st.ok||!st.w)return;
+    try{
+      await send(0x04,[]); // Đọc NTC, Watt, RPM mỗi 400ms
+      step++;
+      if(step%6===0){ // Mỗi 2.4s mới hỏi trạng thái đèn
+        await sleep(40);
+        await send(0x07,[]);
+      }
+      if(step%10===0){ // Mỗi 4s mới hỏi chế độ bảo vệ
+        await sleep(40);
+        await send(0x0C,[]);
+        step=0;
+      }
+    }catch(e){}
+  },400);
+}
 function stopPoll(){if(st.poll){clearInterval(st.poll);st.poll=null}}
 
 function guessNtc(data){var i,v;for(i=0;i<data.length;i++){if(i===0||i===3||i===4)continue;v=data[i];if(v>=8&&v<=90)return v}return null}
@@ -123,6 +143,7 @@ function paint(){$("modeTxt").textContent=modeName(st.mode);$("lightTxt").textCo
 function parse(u){
   if(!u||u[0]!==0x20||u.length<4)return;
   var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
+  
   if(cmd===0xA5&&data.length>=7){
     $("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";
     $("watt").textContent=data[0]+"W";
@@ -134,13 +155,24 @@ function parse(u){
     }
     return;
   }
+  
   if(cmd===0xA6&&data.length>=4){
-    st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];
+    st.on=!!data[0];
+    st.rage=data[1];
+    st.mode=data[2];
+    st.pct=data[3];
     $("pwr").className="sw"+(st.on?" on":"");
     $("pwrTxt").textContent=st.on?"Bật":"Tắt";
-    if(st.on)startRun();else stopRun();
+    if(st.on){
+      startRun();
+    }else{
+      stopRun();
+      $("rpm").textContent="0 RPM";
+      $("watt").textContent="0W";
+    }
     paint();save();return;
   }
+  
   if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}
   if(cmd===0xA8){if(data.length>=2&&data[1])st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=4)st.ledSpd=data[2];paint()}
 }
@@ -156,7 +188,9 @@ async function attach(dev){
   st.w=await svc.getCharacteristic(TX);
   var n=await svc.getCharacteristic(RX);
   await n.startNotifications();
-  n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});
+  n.addEventListener("characteristicvaluechanged",function(ev){
+    parse(new Uint8Array(ev.target.value.buffer));
+  });
   dev.addEventListener("gattserverdisconnected",function(){
     stopPoll();stopRun();st.ok=false;st.w=null;
     $("dot").className="dot";$("conn").textContent="Mất kết nối";
@@ -167,15 +201,21 @@ async function attach(dev){
   resetRun();
   if(st.on)startRun();
   startPoll();
-  try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}
+  try{await send(0x04,[]);await sleep(50);await send(0x07,[]);await sleep(50);await send(0x0C,[])}catch(e){}
 }
 
-async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
+async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android / Bluefy iOS");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 async function power(on){
   st.on=on;
   $("pwr").className="sw"+(on?" on":"");
   $("pwrTxt").textContent=on?"Bật":"Tắt";
-  if(on)startRun();else stopRun();
+  if(on){
+    startRun();
+  }else{
+    stopRun();
+    $("rpm").textContent="0 RPM";
+    $("watt").textContent="0W";
+  }
   if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}
 }
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;if(!min){toast("Đã đóng hẹn giờ");return}toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){power(false);toast("Đã tắt theo lịch")},min*60000)}
