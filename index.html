@@ -69,7 +69,7 @@ input[type=range],input[type=number]{width:100%}
     <button class="btn n" id="dis" type="button">Ngắt</button>
     <button class="btn n" id="copy" type="button">Chép nhật ký</button>
   </div>
-  <div class="hint" id="info">Bàn làm việc: 0B 01 sau khi bật đèn, không gửi 0A 00.</div>
+  <div class="hint" id="info">Chưa chọn thiết bị.</div>
   <div class="log" id="log"></div>
 </div>
 <div class="bg" id="bg"></div><div class="sh" id="sh"><div id="body"></div></div><div class="toast" id="toast"></div>
@@ -78,7 +78,7 @@ input[type=range],input[type=number]{width:100%}
 var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe34729bb3",RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:7,name:"Ánh sáng chảy"},{id:1,name:"Nhịp thở"},{id:2,name:"Đuổi theo"},{id:3,name:"Đệm"},{id:4,name:"Sáng liên tục"},{id:5,name:"Vòng sao"},{id:6,name:"Linh động"}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,low:false,desk:false,timer:null,fw:"V212"};
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,low:false,timer:null,fw:"V212"};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
@@ -86,7 +86,6 @@ function hex(u){return Array.from(u).map(function(b){return ("0"+b.toString(16))
 function dec(u){try{return new TextDecoder().decode(u).replace(/\u0000/g,"").trim()}catch(e){return ""}}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
 function frame(cmd,data){data=data||[];var p=[0x20,cmd,data.length].concat(data);p.push(sum8(p));return p}
-function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 async function send(cmd,data){if(!st.w)throw new Error("Chưa kết nối");var p=frame(cmd,data);log("Gửi "+hex(p));await st.w.writeValueWithoutResponse(new Uint8Array(p))}
 function modeName(id){var m=MODE.filter(function(x){return x.id===id})[0];return m?m.name:"Cân bằng"}
 function lightName(id){var m=LIGHT.filter(function(x){return x.id===id})[0];return m?m.name:"Ánh sáng chảy"}
@@ -98,8 +97,8 @@ function parse(u){
   if(cmd===0xA5&&data.length>=7){$("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";$("watt").textContent=data[0]+"W";if(data[0]>0)$("pps").textContent="PPS";return}
   if(cmd===0xA6&&data.length>=4){st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];$("modeTxt").textContent=modeName(st.mode);$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(st.rage?" on":"");$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";return}
   if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();log("A7 nhiệt thấp="+(st.low?"bật":"tắt"));return}
-  if(cmd===0xA8){if(data.length>=2){st.fx=data[1]||st.fx;$("lightTxt").textContent=lightName(st.fx)}log("A8 đèn "+hex(u));return}
-  if(cmd===0x51)log("Từ chối "+hex(u));else log("Trả "+hex(u));
+  if(cmd===0xA8){if(data.length>=2){st.fx=data[1]||st.fx;$("lightTxt").textContent=lightName(st.fx)}return}
+  if(cmd===0x51)log("Từ chối "+hex(u));else if(cmd!==0xA3)log("Trả "+hex(u));
 }
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
@@ -117,20 +116,6 @@ async function attach(dev){
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){log("Lỗi: "+(e.message||e.name||"không rõ"))}}
 async function power(on){st.on=on;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){log(e.message)}}
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;if(!min){toast("Đã đóng hẹn giờ");return}toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){power(false);toast("Đã tắt theo lịch")},min*60000)}
-async function deskOn(){
-  if(!st.ok){toast("Kết nối trước");return}
-  log("Bàn làm việc Bật: đèn rồi 0B");
-  try{
-    await send(0x06,[1]);await send(0x07,[st.fx||7]);await sleep(200);
-    await send(0x0B,[1]);await sleep(250);await send(0x0B,[1,0]);await sleep(250);await send(0x0B,[2]);
-  }catch(e){log(e.message)}
-  toast("Đã gửi 0B. Xem quạt/TEC và đèn");
-}
-async function deskOff(){
-  if(!st.ok)return;
-  log("Bàn làm việc Tắt: 0B 00");
-  try{await send(0x0B,[0]);await send(0x0A,[1])}catch(e){log(e.message)}
-}
 $("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
@@ -147,9 +132,7 @@ $("menu").onclick=function(){
     $("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()};
   };
   $("mDesk").onclick=function(){
-    openSh("<h3>Chế độ bàn làm việc</h3><p class='hint'>App gốc: chỉ đèn, tắt quạt và TEC. Web gửi 0B (rỗng từng bị từ chối). Không gửi tắt nguồn 0A 00.</p><button class='opt' id='den' type='button'>Bật</button><button class='opt' id='ddis' type='button'>Tắt</button>");
-    $("den").onclick=function(){closeSh();deskOn()};
-    $("ddis").onclick=function(){closeSh();deskOff()};
+    openSh("<h3>Chế độ bàn làm việc</h3><p class='hint'>V212 từ chối mọi gói 0B (51 01 06). Tắt nguồn 0A 00 thì đèn cũng mất. Web không giả lập được mục này cho đến khi bắt được đúng gói từ app gốc (nRF Connect lúc bật bàn làm việc).</p>");
   };
 };
 $("bMode").onclick=function(){
