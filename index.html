@@ -25,7 +25,7 @@ button,input{font:inherit}
 .sw i{position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%}
 .sw.on i{left:20px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:8px 12px}
-.card{background:#f3f4f6;border:1.5px solid transparent;border-radius:16px;padding:14px 12px;text-align:left;min-height:88px}
+.card{background:#f3f4f6;border:1.5px solid transparent;border-radius:16px;padding:14px 12px;text-align:left;min-height:84px}
 .card.on{background:#f0fdf4;border-color:#22c55e}
 .card h3{margin:0 0 4px;font-size:14px}
 .card p{margin:0;color:#6b7280;font-size:12px}
@@ -34,7 +34,8 @@ button,input{font:inherit}
 .btn{border:0;border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px}
 .g{background:#22c55e;color:#fff}
 .n{background:#f3f4f6}
-.log{background:#0b1220;color:#86efac;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:100px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.r{background:#fee2e2;color:#b91c1c}
+.log{background:#0b1220;color:#86efac;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:90px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .hint{color:#6b7280;font-size:12px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px}
 .bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}
@@ -43,13 +44,11 @@ button,input{font:inherit}
 .sh.show{transform:translate(-50%,0)}
 .opt{display:flex;justify-content:space-between;width:100%;padding:14px 0;border:0;border-bottom:1px solid #f3f4f6;background:0;text-align:left}
 .opt.sel{color:#16a34a;font-weight:700}
-input[type=range],input[type=color]{width:100%}
-.swatch{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-.swatch button{width:36px;height:36px;border:2px solid #e5e7eb;border-radius:8px}
+input[type=range],input[type=color],input[type=number]{width:100%}
 </style>
 </head>
 <body>
-<div class="top"><button class="ib" id="back" type="button">‹</button><h1>B3PRO</h1><span></span></div>
+<div class="top"><button class="ib" id="back" type="button">‹</button><h1>B3PRO</h1><button class="ib" id="menu" type="button">⋮</button></div>
 <div class="hero">
 <svg class="cool" viewBox="0 0 200 200" aria-label="PIVA B3PRO">
   <defs>
@@ -74,15 +73,17 @@ input[type=range],input[type=color]{width:100%}
 </div>
 <div class="metrics">
   <div><div class="val" id="rpm">—</div><div class="lbl">Tốc độ quạt</div></div>
-  <div><div class="val">PPS</div><div class="lbl">Cấp nguồn</div></div>
+  <div><div class="val" id="pps">--</div><div class="lbl">Giao thức cấp nguồn</div></div>
   <div><div class="val" id="watt">—</div><div class="lbl">Công suất</div></div>
   <div><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div></div>
 </div>
 <div class="grid">
-  <button class="card on" id="bMode" type="button"><h3>Cài đặt hiệu suất</h3><p id="modeTxt">Cực lạnh</p></button>
-  <button class="card" id="bLight" type="button"><h3>Cài đặt hiệu ứng đèn</h3><p id="lightTxt">Ánh sáng chảy</p></button>
+  <button class="card on" id="bMode" type="button"><h3>Chế độ hiệu năng</h3><p id="modeTxt">Cực lạnh</p></button>
+  <button class="card" id="bLight" type="button"><h3>Hiệu ứng ánh sáng</h3><p id="lightTxt">Ánh sáng chảy</p></button>
   <button class="card" id="bRage" type="button"><h3>Chế độ ép xung</h3><p id="rageTxt">Đóng</p></button>
   <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p id="smartTxt">Đóng</p></button>
+  <button class="card" id="bProt" type="button"><h3>Cơ chế bảo vệ</h3><p id="protTxt">Nhiệt cao luôn bật</p></button>
+  <button class="card" id="bFw" type="button"><h3>Phiên bản firmware</h3><p>V212</p></button>
 </div>
 <div class="box">
   <div class="row">
@@ -104,18 +105,13 @@ var RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var OPT=[SVC,"generic_access","device_information"];
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[
-  {id:7,name:"Ánh sáng chảy"},
-  {id:1,name:"Nhịp thở"},
-  {id:2,name:"Đuổi theo"},
-  {id:3,name:"Đệm"},
-  {id:4,name:"Sáng liên tục"},
-  {id:5,name:"Vòng sao"},
-  {id:6,name:"Linh động"}
+  {id:7,name:"Ánh sáng chảy"},{id:1,name:"Nhịp thở"},{id:2,name:"Đuổi theo"},
+  {id:3,name:"Đệm"},{id:4,name:"Sáng liên tục"},{id:5,name:"Vòng sao"},{id:6,name:"Linh động"}
 ];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,smart:false,temp:38,spd:2,multi:true,col:[128,0,255]};
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:7,rage:0,pct:100,smart:false,temp:38,spd:2,multi:true,col:[128,0,255],low:true,desk:false,timer:null};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
-function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},1600)}
+function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},1800)}
 function hex(u){return Array.from(u).map(function(b){return ("0"+b.toString(16)).slice(-2)}).join(" ").toUpperCase()}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
 function frame(cmd,data){data=data||[];var p=[0x20,cmd,data.length].concat(data);p.push(sum8(p));return p}
@@ -127,24 +123,15 @@ async function send(cmd,data){
 function rageLabel(){return st.rage===0?"Đóng":("Mức "+st.rage+" · "+st.pct+"%")}
 function modeName(id){var m=MODE.filter(function(x){return x.id===id})[0];return m?m.name:"Cân bằng"}
 function lightName(id){var m=LIGHT.filter(function(x){return x.id===id})[0];return m?m.name:"Ánh sáng chảy"}
-function setSmartUi(){
-  $("smartTxt").textContent=st.smart?("Bật · "+st.temp+"\u00b0C"):"Đóng";
-  $("bSmart").className="card"+(st.smart?" on":"");
-}
-async function sendLight(){
-  if(!st.ok)return;
-  try{
-    await send(0x07,[st.fx]);
-    await send(0x08,[st.spd]);
-    if(!st.multi) await send(0x08,[1,st.col[0],st.col[1],st.col[2]]);
-  }catch(e){log(e.message)}
-}
+function setSmartUi(){$("smartTxt").textContent=st.smart?("Bật · "+st.temp+"\u00b0C"):"Đóng";$("bSmart").className="card"+(st.smart?" on":"")}
+function setProtUi(){$("protTxt").textContent=st.low?"Nhiệt thấp bật":"Nhiệt thấp tắt";$("bProt").className="card"+(st.low?" on":"")}
 function parse(u){
   if(!u||u[0]!==0x20||u.length<4)return;
   var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
   if(cmd===0xA5&&data.length>=7){
     $("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";
     $("watt").textContent=data[0]+"W";
+    if(data[0]>0)$("pps").textContent="PPS";
     return;
   }
   if(cmd===0xA6&&data.length>=4){
@@ -152,18 +139,19 @@ function parse(u){
     $("modeTxt").textContent=modeName(st.mode);
     $("rageTxt").textContent=rageLabel();
     $("bRage").className="card"+(st.rage?" on":"");
+    $("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";
     log("A6 nguồn "+data[0]+" mức "+data[1]+" mode "+data[2]+" quạt "+data[3]+"%");
     return;
   }
+  if(cmd===0xA7){
+    if(data.length)st.low=!!data[data.length-1];
+    setProtUi();log("Bảo vệ "+hex(u));return;
+  }
   if(cmd===0xA8&&data.length>=2){
-    st.fx=data[1]||st.fx;
-    $("lightTxt").textContent=lightName(st.fx);
-    log("Đèn fx "+data[1]+" raw "+hex(u));
-    return;
+    st.fx=data[1]||st.fx;$("lightTxt").textContent=lightName(st.fx);
+    log("Đèn fx "+data[1]);return;
   }
-  if(cmd===0xA9&&data.length>=1){
-    st.smart=!!data[0];setSmartUi();log("Thông minh "+(st.smart?"bật":"tắt"));return;
-  }
+  if(cmd===0xA9&&data.length>=1){st.smart=!!data[0];setSmartUi();return}
   if(cmd===0x51)log("Từ chối "+hex(u));
   else log("Trả cmd="+cmd.toString(16)+" "+hex(u));
 }
@@ -179,84 +167,124 @@ async function attach(dev){
   await n.startNotifications();
   n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});
   st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");
-  try{await send(0x04,[]);await send(0x07,[]);await send(0x0D,[])}catch(e){}
+  try{await send(0x04,[]);await send(0x0C,[]);await send(0x0D,[])}catch(e){}
 }
 async function ask(){
   if(!navigator.bluetooth){toast("Cần Chrome Android");return}
   try{await attach(await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:OPT}))}
   catch(e){log("Lỗi: "+(e.message||e.name||"không rõ"))}
 }
+async function power(on){
+  st.on=on;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";
+  if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){log(e.message)}
+}
+function armTimer(min){
+  if(st.timer)clearTimeout(st.timer);
+  st.timer=null;
+  if(!min){toast("Đã đóng hẹn giờ");return}
+  toast("Tắt sau "+min+" phút");
+  st.timer=setTimeout(function(){power(false);toast("Đã tắt theo lịch")},min*60000);
+}
 $("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("copy").onclick=function(){navigator.clipboard&&navigator.clipboard.writeText($("log").textContent).then(function(){toast("Đã chép")})};
 $("bg").onclick=closeSh;
-$("pwr").onclick=async function(){
-  if(!st.ok){toast("Kết nối trước");return}
-  st.on=!st.on;$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";
-  try{await send(0x0A,[st.on?1:0])}catch(e){log(e.message)}
+$("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
+$("bFw").onclick=function(){toast("Firmware V212")};
+$("menu").onclick=function(){
+  openSh("<h3>Tùy chọn</h3>"+
+    "<button class='opt r' id='mDis' type='button'>Ngắt kết nối</button>"+
+    "<button class='opt' id='mTimer' type='button'>Tắt nguồn theo lịch trình</button>"+
+    "<button class='opt' id='mDesk' type='button'>Chế độ bàn làm việc</button>");
+  $("mDis").onclick=function(){closeSh();$("dis").click()};
+  $("mTimer").onclick=function(){
+    openSh("<h3>Tắt nguồn theo lịch trình</h3>"+
+      [0,30,60,120,180].map(function(m){return "<button class='opt' data-m='"+m+"' type='button'>"+(m?("Sau "+m+" phút"):"Đóng")+"</button>"}).join("")+
+      "<p class='hint'>Tùy chỉnh (phút)</p><input id='cm' type='number' min='1' max='720' value='45'/><div class='row'><button class='btn g' id='cgo' type='button'>Đặt</button></div>");
+    $("body").onclick=function(e){var b=e.target.closest("[data-m]");if(!b)return;armTimer(+b.getAttribute("data-m"));closeSh()};
+    $("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()};
+  };
+  $("mDesk").onclick=function(){
+    openSh("<h3>Chế độ bàn làm việc</h3><p class='hint'>Khi bật, chỉ đèn được bật, quạt và nguồn TEC chính sẽ tắt.</p>"+
+      "<button class='opt"+(st.desk?" sel":"")+"' id='den' type='button'>Bật</button>"+
+      "<button class='opt"+(!st.desk?" sel":"")+"' id='ddis' type='button'>Tắt</button>");
+    $("den").onclick=async function(){
+      st.desk=true;closeSh();toast("Bàn làm việc: chỉ đèn");
+      if(!st.ok)return;
+      try{await send(0x0A,[0]);await send(0x06,[1])}catch(e){log(e.message)}
+    };
+    $("ddis").onclick=async function(){
+      st.desk=false;closeSh();
+      if(!st.ok)return;
+      try{await send(0x0A,[1])}catch(e){log(e.message)}
+    };
+  };
 };
 $("bMode").onclick=function(){
-  openSh("<h3>Cài đặt hiệu suất</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span><span>'+(st.mode===m.id?"\u2713":"")+'</span></button>'}).join(""));
+  openSh("<h3>Cài đặt hiệu suất</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span></button>'}).join(""));
   $("body").onclick=async function(e){
     var b=e.target.closest("[data-id]");if(!b)return;
     st.mode=+b.getAttribute("data-id");$("modeTxt").textContent=modeName(st.mode);closeSh();
-    if(!st.ok)return;try{await send(0x04,[st.mode])}catch(err){log(err.message)}
+    if(st.ok)try{await send(0x04,[st.mode])}catch(err){log(err.message)}
   };
 };
 $("bLight").onclick=function(){
   openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+
     LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'" type="button"><span>'+m.name+'</span></button>'}).join("")+
+    "<button class='opt' id='ledOn' type='button'>Bật đèn</button>"+
+    "<button class='opt' id='ledOff' type='button'>Tắt đèn</button>"+
     "<p class='hint'>Lựa chọn màu sắc</p>"+
-    "<button class='opt"+(st.multi?" sel":"")+"' id='cm' type='button'>Nhiều màu</button>"+
-    "<button class='opt"+(!st.multi?" sel":"")+"' id='cs' type='button'>Một màu</button>"+
-    "<p class='hint'>Tốc độ hiệu ứng đèn</p><input id='spd' type='range' min='1' max='4' value='"+st.spd+"'/>"+
-    "<div id='colbox' style='display:"+(st.multi?"none":"block")+"'><p class='hint'>Chọn màu</p><input id='col' type='color' value='#8000FF'/></div>"+
+    "<button class='opt' id='cm' type='button'>Nhiều màu</button>"+
+    "<button class='opt' id='cs' type='button'>Một màu</button>"+
+    "<p class='hint'>Tốc độ</p><input id='spd' type='range' min='1' max='4' value='"+st.spd+"'/>"+
+    "<input id='col' type='color' value='#8000FF'/>"+
     "<div class='row'><button class='btn g' id='applyL' type='button'>Gửi đèn</button></div>");
   $("body").onclick=async function(e){
     var b=e.target.closest("[data-fx]");
     if(b){st.fx=+b.getAttribute("data-fx");$("lightTxt").textContent=lightName(st.fx);if(st.ok)try{await send(0x07,[st.fx])}catch(err){log(err.message)}}
   };
-  $("cm").onclick=function(){st.multi=true;$("colbox").style.display="none"};
-  $("cs").onclick=function(){st.multi=false;$("colbox").style.display="block"};
+  $("ledOn").onclick=async function(){if(st.ok)try{await send(0x06,[1])}catch(e){log(e.message)}};
+  $("ledOff").onclick=async function(){if(st.ok)try{await send(0x06,[0])}catch(e){log(e.message)}};
+  $("cm").onclick=function(){st.multi=true};
+  $("cs").onclick=function(){st.multi=false};
   $("spd").oninput=function(){st.spd=+this.value};
-  $("col").oninput=function(){
-    var h=this.value.replace("#","");
-    st.col=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+  $("col").oninput=function(){var h=this.value.replace("#","");st.col=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]};
+  $("applyL").onclick=async function(){
+    if(!st.ok)return;
+    try{await send(0x07,[st.fx]);await send(0x08,[st.spd]);if(!st.multi)await send(0x08,[1,st.col[0],st.col[1],st.col[2]])}catch(e){log(e.message)}
   };
-  $("applyL").onclick=sendLight;
 };
 $("bRage").onclick=function(){
   openSh("<h3>Chế độ ép xung</h3>"+
-    "<button class='opt"+(st.rage===0?" sel":"")+"' id='r0' type='button'>Đóng</button>"+
-    "<button class='opt"+(st.rage===1?" sel":"")+"' id='r1' type='button'>Mức 1</button>"+
-    "<button class='opt"+(st.rage===2?" sel":"")+"' id='r2' type='button'>Mức 2</button>"+
+    "<button class='opt' id='r0' type='button'>Đóng</button>"+
+    "<button class='opt' id='r1' type='button'>Mức 1</button>"+
+    "<button class='opt' id='r2' type='button'>Mức 2</button>"+
     "<p class='hint' id='pctLbl'>Tốc độ quạt "+st.pct+"%</p><input id='rng' type='range' min='80' max='100' value='"+Math.max(80,st.pct)+"'/>"+
     "<div class='row'><button class='btn g' id='apply' type='button'>Gửi % quạt</button></div>");
   async function setLv(n){st.rage=n;$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(n?" on":"");if(st.ok)try{await send(0x09,[n])}catch(e){log(e.message)}}
-  $("r0").onclick=function(){setLv(0)};
-  $("r1").onclick=function(){setLv(1)};
-  $("r2").onclick=function(){setLv(2)};
+  $("r0").onclick=function(){setLv(0)};$("r1").onclick=function(){setLv(1)};$("r2").onclick=function(){setLv(2)};
   $("rng").oninput=function(){$("pctLbl").textContent="Tốc độ quạt "+this.value+"%";st.pct=+this.value};
-  $("apply").onclick=async function(){
-    st.pct=+$("rng").value;$("rageTxt").textContent=rageLabel();
-    if(!st.ok)return;try{await send(0x05,[st.pct])}catch(e){log(e.message)}
-  };
+  $("apply").onclick=async function(){st.pct=+$("rng").value;$("rageTxt").textContent=rageLabel();if(st.ok)try{await send(0x05,[st.pct])}catch(e){log(e.message)}};
 };
 $("bSmart").onclick=function(){
   openSh("<h3>Điều khiển thông minh</h3>"+
-    "<button class='opt"+(!st.smart?" sel":"")+"' id='soff' type='button'>Đóng</button>"+
-    "<button class='opt"+(st.smart?" sel":"")+"' id='son' type='button'>Bật</button>"+
+    "<button class='opt' id='soff' type='button'>Đóng</button>"+
+    "<button class='opt' id='son' type='button'>Bật</button>"+
     "<p class='hint' id='tLbl'>Nhiệt mục tiêu "+st.temp+"\u00b0C</p><input id='tr' type='range' min='20' max='45' value='"+st.temp+"'/>"+
     "<div class='row'><button class='btn g' id='stemp' type='button'>Gửi nhiệt</button></div>");
   $("soff").onclick=async function(){st.smart=false;setSmartUi();if(st.ok)try{await send(0x0D,[0])}catch(e){log(e.message)}};
   $("son").onclick=async function(){st.smart=true;setSmartUi();if(st.ok)try{await send(0x0D,[1])}catch(e){log(e.message)}};
   $("tr").oninput=function(){st.temp=+this.value;$("tLbl").textContent="Nhiệt mục tiêu "+st.temp+"\u00b0C"};
-  $("stemp").onclick=async function(){
-    st.temp=+$("tr").value;setSmartUi();
-    if(!st.ok)return;
-    try{await send(0x03,[1,st.temp]);await send(0x03,[st.temp])}catch(e){log(e.message)}
-  };
+  $("stemp").onclick=async function(){st.temp=+$("tr").value;setSmartUi();if(st.ok)try{await send(0x03,[1,st.temp]);await send(0x03,[st.temp])}catch(e){log(e.message)}};
+};
+$("bProt").onclick=function(){
+  openSh("<h3>Cơ chế bảo vệ</h3>"+
+    "<div class='opt'><span>Bảo vệ nhiệt cao</span><span class='hint'>Không tắt được</span></div>"+
+    "<button class='opt' id='lon' type='button'>Bảo vệ nhiệt thấp: Bật</button>"+
+    "<button class='opt' id='loff' type='button'>Bảo vệ nhiệt thấp: Tắt</button>");
+  $("lon").onclick=async function(){st.low=true;setProtUi();if(st.ok)try{await send(0x0C,[1]);await send(0x0C,[0,1])}catch(e){log(e.message)}};
+  $("loff").onclick=async function(){st.low=false;setProtUi();if(st.ok)try{await send(0x0C,[0]);await send(0x0C,[0,0])}catch(e){log(e.message)}};
 };
 log("Sẵn sàng.");
 })();
