@@ -17,12 +17,12 @@ button{font:inherit}
 .st{display:flex;justify-content:center;gap:6px;font-weight:700}
 .dot{width:16px;height:16px;border-radius:50%;background:#e5e7eb;color:#fff;display:grid;place-items:center;font-size:10px}
 .dot.ok{background:#22c55e}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;padding:8px 8px 4px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;padding:8px}
 .val{font-weight:800;font-size:18px}
-.lbl{color:#6b7280;font-size:11px;margin-top:2px}
+.lbl{color:#6b7280;font-size:11px}
 .sw{width:46px;height:26px;border:0;border-radius:99px;background:#e5e7eb;position:relative;margin:6px auto 2px}
 .sw.on{background:#22c55e}
-.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .15s}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%}
 .sw.on i{left:23px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:8px 12px}
 .card{background:#f3f4f6;border:1.5px solid transparent;border-radius:16px;padding:14px;text-align:left}
@@ -35,9 +35,15 @@ button{font:inherit}
 .btn{border:0;border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px}
 .g{background:#22c55e;color:#fff}
 .n{background:#f3f4f6}
-.log{background:#0b1220;color:#bbf7d0;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:150px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.log{background:#0b1220;color:#bbf7d0;font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:140px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .hint{color:#6b7280;font-size:12px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px}
+.bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}
+.bg.show{display:block}
+.sh{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(430px,100%);background:#fff;border-radius:20px 20px 0 0;z-index:50;padding:8px 16px 24px;transition:.2s}
+.sh.show{transform:translate(-50%,0)}
+.opt{display:flex;justify-content:space-between;width:100%;padding:14px 0;border:0;border-bottom:1px solid #f3f4f6;background:0;text-align:left}
+.opt.sel{font-weight:700}
 </style>
 </head>
 <body>
@@ -49,19 +55,16 @@ button{font:inherit}
 <div class="metrics">
   <div><div class="val" id="rpm">—</div><div class="lbl">Tốc độ quạt</div></div>
   <div><div class="val" id="watt">—</div><div class="lbl">Công suất</div></div>
-  <div>
-    <button class="sw on" id="pwr" type="button"><i></i></button>
-    <div class="lbl" id="pwrTxt">Bật</div>
-  </div>
+  <div><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div></div>
 </div>
 <div class="grid">
-  <button class="card" id="bMode" type="button"><h3>Chế độ</h3><p id="modeTxt">Gửi lệnh 04</p></button>
-  <button class="card" id="bLight" type="button"><h3>Đèn</h3><p id="lightTxt">Gửi lệnh 06</p></button>
-  <button class="card" id="bRage" type="button"><h3>Ép xung</h3><p>Gửi lệnh 05</p></button>
-  <button class="card" id="bFx" type="button"><h3>Hiệu ứng</h3><p>Gửi lệnh 07</p></button>
+  <button class="card on" id="bMode" type="button"><h3>Chế độ hiệu năng</h3><p id="modeTxt">Cực lạnh</p></button>
+  <button class="card" id="bLight" type="button"><h3>Hiệu ứng ánh sáng</h3><p id="lightTxt">Linh động</p></button>
+  <button class="card" id="bRage" type="button"><h3>Chế độ ép xung</h3><p id="rageTxt">Đóng</p></button>
+  <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p>Đóng</p></button>
 </div>
 <div class="box">
-  <div class="warn">Nút kết nối giờ hiện mọi máy Bluetooth. Chọn đúng tên B3PRO. Tắt app Piva trước. Máy đang bị giữ kết nối thì rút nguồn 2 giây rồi cắm lại.</div>
+  <div class="warn">Bốn chế độ hiệu năng lấy đúng tên app Piva. Ép xung và đèn là mục riêng, không phải chế độ quạt.</div>
   <div class="row">
     <button class="btn g" id="connect" type="button">Kết nối B3PRO</button>
     <button class="btn n" id="dis" type="button">Ngắt</button>
@@ -70,6 +73,8 @@ button{font:inherit}
   <div class="hint" id="info">Chưa chọn thiết bị.</div>
   <div class="log" id="log"></div>
 </div>
+<div class="bg" id="bg"></div>
+<div class="sh" id="sh"><div id="body"></div></div>
 <div class="toast" id="toast"></div>
 <script>
 (function(){
@@ -77,8 +82,19 @@ var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455";
 var TX="49535343-8841-43f4-a8d4-ecbe34729bb3";
 var RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var OPT=[SVC,"generic_access","device_information"];
-var MODE=["Cực lạnh","Tiết kiệm","Im lặng","Kiểm soát nhiệt"];
-var st={ok:false,dev:null,w:null,on:true,mode:0,light:true,fx:0};
+var MODE=[
+  {id:0,name:"Cực lạnh"},
+  {id:1,name:"Tiết kiệm"},
+  {id:2,name:"Im lặng"},
+  {id:3,name:"Kiểm soát nhiệt độ"}
+];
+var LIGHT=[
+  {id:0,name:"Linh động"},
+  {id:1,name:"Hơi thở"},
+  {id:2,name:"Cầu vồng"},
+  {id:3,name:"Đa sắc PIVA"}
+];
+var st={ok:false,dev:null,w:null,on:true,mode:0,light:true,fx:0,rage:false};
 function $(id){return document.getElementById(id)}
 function log(m){var el=$("log");el.textContent+="["+new Date().toLocaleTimeString("vi-VN")+"] "+m+"\n";el.scrollTop=el.scrollHeight}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},1600)}
@@ -87,8 +103,7 @@ function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
 function frame(cmd,data){data=data||[];var p=[0x20,cmd,data.length].concat(data);p.push(sum8(p));return p}
 async function send(cmd,data){
   if(!st.w)throw new Error("Chưa kết nối");
-  var p=frame(cmd,data);
-  log("Gửi "+hex(p));
+  var p=frame(cmd,data);log("Gửi "+hex(p));
   await st.w.writeValueWithoutResponse(new Uint8Array(p));
 }
 function parse(u){
@@ -96,16 +111,17 @@ function parse(u){
   var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
   if(cmd===0xA5&&data.length>=7){
     var rpm=data[3]|(data[4]<<8);
-    var w=data[0];
     $("rpm").textContent=rpm+" RPM";
-    $("watt").textContent=w+"W";
+    $("watt").textContent=data[0]+"W";
     if(rpm===0){st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="Tắt"}
     else if(!st.on){st.on=true;$("pwr").className="sw on";$("pwrTxt").textContent="Bật"}
     return;
   }
-  if(cmd===0x51){log("Máy từ chối "+hex(u));return}
-  log("Máy trả "+hex(u));
+  if(cmd===0x51)log("Máy từ chối "+hex(u));
+  else log("Máy trả "+hex(u));
 }
+function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
+function closeSh(){$("bg").className="bg";$("sh").className="sh"}
 async function attach(dev){
   st.dev=dev;$("info").textContent="Thiết bị: "+(dev.name||"(không tên)");
   log("Chọn "+(dev.name||dev.id));
@@ -115,51 +131,48 @@ async function attach(dev){
   var n=await svc.getCharacteristic(RX);
   await n.startNotifications();
   n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});
-  st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";
-  toast("Đã kết nối");
+  st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");
 }
 async function ask(){
   if(!navigator.bluetooth){toast("Cần Chrome Android");return}
-  log("Mở danh sách mọi máy Bluetooth…");
-  try{
-    var dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:OPT});
-    await attach(dev);
-  }catch(e){log("Lỗi: "+(e.message||e.name||"không rõ"))}
+  try{await attach(await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:OPT}))}
+  catch(e){log("Lỗi: "+(e.message||e.name||"không rõ"))}
 }
 $("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("copy").onclick=function(){navigator.clipboard&&navigator.clipboard.writeText($("log").textContent).then(function(){toast("Đã chép")})};
+$("bg").onclick=closeSh;
 $("pwr").onclick=async function(){
   if(!st.ok){toast("Kết nối trước");return}
-  st.on=!st.on;
-  $("pwr").className="sw"+(st.on?" on":"");
-  $("pwrTxt").textContent=st.on?"Bật":"Tắt";
+  st.on=!st.on;$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";
   try{await send(0x0A,[st.on?1:0])}catch(e){log(e.message)}
 };
-$("bMode").onclick=async function(){
-  if(!st.ok){toast("Kết nối trước");return}
-  st.mode=(st.mode+1)%4;
-  $("modeTxt").textContent=MODE[st.mode];
-  try{await send(0x04,[st.mode]);toast(MODE[st.mode])}catch(e){log(e.message)}
+$("bMode").onclick=function(){
+  openSh("<h3>Chế độ hiệu năng</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span><span>'+(st.mode===m.id?"\u2713":"")+'</span></button>'}).join(""));
+  $("body").onclick=async function(e){
+    var b=e.target.closest("[data-id]");if(!b)return;
+    st.mode=+b.getAttribute("data-id");$("modeTxt").textContent=MODE[st.mode].name;closeSh();
+    if(!st.ok){toast("Đã chọn trên màn hình");return}
+    try{await send(0x04,[st.mode])}catch(err){log(err.message)}
+  };
 };
-$("bLight").onclick=async function(){
-  if(!st.ok){toast("Kết nối trước");return}
-  st.light=!st.light;
-  $("lightTxt").textContent=st.light?"Bật":"Tắt";
-  $("bLight").className="card"+(st.light?" on":"");
-  try{await send(0x06,[st.light?1:0])}catch(e){log(e.message)}
+$("bLight").onclick=function(){
+  openSh("<h3>Hiệu ứng ánh sáng</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span><span>'+(st.fx===m.id?"\u2713":"")+'</span></button>'}).join(""));
+  $("body").onclick=async function(e){
+    var b=e.target.closest("[data-id]");if(!b)return;
+    st.fx=+b.getAttribute("data-id");st.light=true;$("lightTxt").textContent=LIGHT[st.fx].name;closeSh();
+    if(!st.ok)return;
+    try{await send(0x07,[st.fx])}catch(err){log(err.message)}
+  };
 };
 $("bRage").onclick=async function(){
-  if(!st.ok){toast("Kết nối trước");return}
-  try{await send(0x05,[1]);toast("Ép xung")}catch(e){log(e.message)}
+  st.rage=!st.rage;$("rageTxt").textContent=st.rage?"Bật":"Đóng";$("bRage").className="card"+(st.rage?" on":"");
+  if(!st.ok)return;
+  try{await send(0x05,[st.rage?1:0])}catch(e){log(e.message)}
 };
-$("bFx").onclick=async function(){
-  if(!st.ok){toast("Kết nối trước");return}
-  st.fx=(st.fx+1)%6;
-  try{await send(0x07,[st.fx]);toast("Hiệu ứng "+st.fx)}catch(e){log(e.message)}
-};
-log("Sẵn sàng. Bấm Kết nối rồi chọn B3PRO trong danh sách.");
+$("bSmart").onclick=function(){toast("Mục này trên app gốc là PID nhiệt — chưa gắn lệnh chắc")};
+log("Sẵn sàng.");
 })();
 </script>
 </body>
