@@ -108,20 +108,19 @@ function startRun(){if(!st.runAt)st.runAt=Date.now();tickRun()}
 function stopRun(){st.runAt=0;tickRun()}
 function resetRun(){st.runAt=0;tickRun()}
 
-// Tăng tốc quét NTC: chu kỳ 400ms hỏi 1 lần, các lệnh phụ gửi giãn cách để không nghẽn BLE
 function startPoll(){
   stopPoll();
   var step=0;
   st.poll=setInterval(async function(){
     if(!st.ok||!st.w)return;
     try{
-      await send(0x04,[]); // Đọc NTC, Watt, RPM mỗi 400ms
+      await send(0x04,[]);
       step++;
-      if(step%6===0){ // Mỗi 2.4s mới hỏi trạng thái đèn
+      if(step%6===0){
         await sleep(40);
         await send(0x07,[]);
       }
-      if(step%10===0){ // Mỗi 4s mới hỏi chế độ bảo vệ
+      if(step%10===0){
         await sleep(40);
         await send(0x0C,[]);
         step=0;
@@ -131,7 +130,19 @@ function startPoll(){
 }
 function stopPoll(){if(st.poll){clearInterval(st.poll);st.poll=null}}
 
-function guessNtc(data){var i,v;for(i=0;i<data.length;i++){if(i===0||i===3||i===4)continue;v=data[i];if(v>=8&&v<=90)return v}return null}
+// Lọc riêng NTC mặt nóng: bỏ qua Watt (data[0]), bỏ qua RPM (data[3], data[4]), lấy nhiệt độ cao hơn
+function guessHotNtc(data){
+  var cands=[];
+  for(var i=1;i<data.length;i++){
+    if(i===3||i===4)continue;
+    var v=data[i];
+    if(v>=8&&v<=95)cands.push(v);
+  }
+  if(!cands.length)return null;
+  cands.sort(function(a,b){return b-a});
+  return cands[0];
+}
+
 function hexRgb(h){h=(h||"#8000FF").replace("#","");return [parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0]}
 function ledPayload(){var L=lightOf(st.fx),sp=st.ledSpd||2,rgb=hexRgb(st.ledHex),r=rgb[0],g=rgb[1],b=rgb[2];if(L.color==="multi")return [1,st.fx,sp,sp,0,255,0,0,0,255,0,0,0,255];return [1,st.fx,sp,sp,0,r,g,b,0,r,g,b,0,r,g,b]}
 async function applyLed(){if(!st.ok){toast("Kết nối trước");return}var L=lightOf(st.fx);try{await send(0x06,[1]);await send(0x07,[st.fx]);if(L.speed)await send(0x07,[st.fx,st.ledSpd]);await send(0x08,ledPayload())}catch(e){toast(e.message)}}
@@ -148,7 +159,8 @@ function parse(u){
     $("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";
     $("watt").textContent=data[0]+"W";
     if(data[0]>0)$("pps").textContent="PPS";
-    var t=guessNtc(data);
+    $("conn").textContent="Đã kết nối · ["+data.join(",")+"]";
+    var t=guessHotNtc(data);
     if(t!=null){
       st.ntc=t;
       $("ntc").textContent=t+"°C";
