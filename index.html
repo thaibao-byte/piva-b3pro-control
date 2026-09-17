@@ -78,7 +78,7 @@ input[type=range]{width:100%}
   <div><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div></div>
 </div>
 <div class="grid">
-  <button class="card on" id="bMode" type="button"><h3>Chế độ hiệu năng</h3><p id="modeTxt">Cực lạnh</p></button>
+  <button class="card on" id="bMode" type="button"><h3>Cài đặt hiệu suất</h3><p id="modeTxt">Cực lạnh</p></button>
   <button class="card" id="bLight" type="button"><h3>Hiệu ứng ánh sáng</h3><p id="lightTxt">Linh động</p></button>
   <button class="card" id="bRage" type="button"><h3>Chế độ ép xung</h3><p id="rageTxt">Đóng</p></button>
   <button class="card" id="bSmart" type="button"><h3>Điều khiển thông minh</h3><p id="smartTxt">Đóng</p></button>
@@ -101,7 +101,7 @@ var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455";
 var TX="49535343-8841-43f4-a8d4-ecbe34729bb3";
 var RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var OPT=[SVC,"generic_access","device_information"];
-var MODE=[{id:3,name:"Cực lạnh"},{id:1,name:"Tiết kiệm"},{id:2,name:"Im lặng"}];
+var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:0,name:"Linh động"},{id:1,name:"Hơi thở"},{id:2,name:"Cầu vồng"},{id:3,name:"Đa sắc PIVA"},{id:4,name:"Hiệu ứng 4"},{id:5,name:"Hiệu ứng 5"},{id:6,name:"Hiệu ứng 6"},{id:7,name:"Hiệu ứng 7"}];
 var st={ok:false,dev:null,w:null,on:true,mode:3,fx:0,rage:0,pct:100,smart:false,temp:38};
 function $(id){return document.getElementById(id)}
@@ -116,9 +116,9 @@ async function send(cmd,data){
   await st.w.writeValueWithoutResponse(new Uint8Array(p));
 }
 function rageLabel(){return st.rage===0?"Đóng":("Mức "+st.rage+" · "+st.pct+"%")}
-function modeName(id){var m=MODE.filter(function(x){return x.id===id})[0];return m?m.name:"Chế độ "+id}
+function modeName(id){var m=MODE.filter(function(x){return x.id===id})[0];return m?m.name:"Cân bằng"}
 function setSmartUi(){
-  $("smartTxt").textContent=st.smart?("Bật · "+st.temp+"°C"):"Đóng";
+  $("smartTxt").textContent=st.smart?("Bật · "+st.temp+"\u00b0C"):"Đóng";
   $("bSmart").className="card"+(st.smart?" on":"");
 }
 function parse(u){
@@ -173,7 +173,7 @@ $("pwr").onclick=async function(){
   try{await send(0x0A,[st.on?1:0])}catch(e){log(e.message)}
 };
 $("bMode").onclick=function(){
-  openSh("<h3>Chế độ hiệu năng</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span><span>'+(st.mode===m.id?"\u2713":"")+'</span></button>'}).join(""));
+  openSh("<h3>Cài đặt hiệu suất</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'" type="button"><span>'+m.name+'</span><span>'+(st.mode===m.id?"\u2713":"")+'</span></button>'}).join(""));
   $("body").onclick=async function(e){
     var b=e.target.closest("[data-id]");if(!b)return;
     st.mode=+b.getAttribute("data-id");$("modeTxt").textContent=modeName(st.mode);closeSh();
@@ -206,14 +206,14 @@ $("bRage").onclick=function(){
   };
 };
 $("bSmart").onclick=function(){
-  openSh("<h3>Điều khiển thông minh</h3><p class='hint'>Bật bằng lệnh 0D. Nhiệt mục tiêu gửi lệnh 03. Xem nhật ký A9/A4.</p>"+
+  openSh("<h3>Điều khiển thông minh</h3>"+
     "<button class='opt"+(!st.smart?" sel":"")+"' id='soff' type='button'>Đóng</button>"+
     "<button class='opt"+(st.smart?" sel":"")+"' id='son' type='button'>Bật</button>"+
-    "<p class='hint' id='tLbl'>Nhiệt mục tiêu "+st.temp+"°C</p><input id='tr' type='range' min='20' max='45' value='"+st.temp+"'/>"+
+    "<p class='hint' id='tLbl'>Nhiệt mục tiêu "+st.temp+"\u00b0C</p><input id='tr' type='range' min='20' max='45' value='"+st.temp+"'/>"+
     "<div class='row'><button class='btn g' id='stemp' type='button'>Gửi nhiệt</button></div>");
   $("soff").onclick=async function(){st.smart=false;setSmartUi();if(st.ok)try{await send(0x0D,[0])}catch(e){log(e.message)}};
   $("son").onclick=async function(){st.smart=true;setSmartUi();if(st.ok)try{await send(0x0D,[1])}catch(e){log(e.message)}};
-  $("tr").oninput=function(){st.temp=+this.value;$("tLbl").textContent="Nhiệt mục tiêu "+st.temp+"°C"};
+  $("tr").oninput=function(){st.temp=+this.value;$("tLbl").textContent="Nhiệt mục tiêu "+st.temp+"\u00b0C"};
   $("stemp").onclick=async function(){
     st.temp=+$("tr").value;setSmartUi();
     if(!st.ok)return;
