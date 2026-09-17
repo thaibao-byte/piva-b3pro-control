@@ -3,51 +3,59 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
-<title>PIVA B3PRO</title>
+<title>B3PRO Lab</title>
 <style>
+:root{--bg:#07090f;--card:#12151e;--line:#1e2433;--txt:#e8edf7;--dim:#8b93a7;--cy:#2ee6ff;--rd:#ff3b4a;--ok:#22d37a}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif}
-body{max-width:430px;margin:0 auto;min-height:100dvh}
-button,input{font:inherit}
-.top{display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
-.top h1{margin:0;font-size:17px;font-weight:800}
-.ib{width:40px;height:40px;border:0;background:0;font-size:22px}
-.hero{text-align:center;padding:4px 16px 8px;background:linear-gradient(#f7f7f8,#fff)}
-.cool{width:220px;height:220px;object-fit:contain;margin:0 auto;display:block;filter:drop-shadow(0 12px 18px rgba(0,0,0,.16))}
-.st{display:flex;justify-content:center;gap:6px;align-items:center;font-weight:700;margin-top:4px}
-.dot{width:14px;height:14px;border-radius:50%;background:#e5e7eb}.dot.ok{background:#22c55e}
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;padding:6px}
-.val{font-weight:800;font-size:13px}.lbl{color:#6b7280;font-size:10px;margin-top:2px}
-.sw{width:42px;height:24px;border:0;border-radius:99px;background:#e5e7eb;position:relative;margin:0 auto}
-.sw.on{background:#22c55e}.sw i{position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%}.sw.on i{left:20px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:8px 12px 4px}
-.card{background:#f3f4f6;border:0;border-radius:16px;padding:14px 12px;text-align:left;min-height:78px}
-.card.on{background:#f0fdf4;outline:1.5px solid #22c55e}
-.card h3{margin:0 0 4px;font-size:14px}.card p{margin:0;color:#6b7280;font-size:12px}
-.box{padding:4px 12px 24px}.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+body{max-width:430px;margin:0 auto;min-height:100dvh;background:radial-gradient(120% 60% at 50% -10%,#1a2744 0%,var(--bg) 55%)}
+button,input{font:inherit;color:inherit}
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+.brand{font-size:11px;letter-spacing:.18em;color:var(--cy);font-weight:800}
+.top h1{margin:0;font-size:16px;font-weight:800}
+.ib{width:40px;height:40px;border:0;background:0;font-size:22px;color:var(--txt)}
+.hero{text-align:center;padding:6px 16px 10px}
+.ring{width:236px;height:236px;margin:0 auto;border-radius:50%;padding:8px;background:conic-gradient(from 210deg,var(--rd),#ff8a3d,var(--cy),#7a5cff,var(--rd));box-shadow:0 0 40px rgba(46,230,255,.18)}
+.ring i{display:block;width:100%;height:100%;border-radius:50%;background:#0b0d14;padding:10px}
+.cool{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 16px rgba(0,0,0,.45))}
+.st{display:flex;justify-content:center;gap:8px;align-items:center;font-weight:700;margin-top:10px;font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;background:#3a4154}.dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 12px}
+.m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center}
+.val{font-weight:800;font-size:12px;color:#fff}.lbl{color:var(--dim);font-size:9px;margin-top:3px;letter-spacing:.02em}
+.sw{width:42px;height:24px;border:0;border-radius:99px;background:#2a3142;position:relative;margin:0 auto}
+.sw.on{background:var(--ok)}.sw i{position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%}.sw.on i{left:20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 12px 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 12px;text-align:left;min-height:78px;color:var(--txt)}
+.card.on{border-color:var(--cy);box-shadow:0 0 0 1px rgba(46,230,255,.25) inset}
+.card h3{margin:0 0 4px;font-size:13px;color:#fff}.card p{margin:0;color:var(--dim);font-size:12px}
+.box{padding:4px 12px 28px}.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .btn{border:0;border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px}
-.g{background:#22c55e;color:#fff}.n{background:#f3f4f6}.r{color:#b91c1c}
-.log{background:#0b1220;color:#86efac;font:11px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:120px;overflow:auto;white-space:pre-wrap;word-break:break-all}
-.hint{color:#6b7280;font-size:12px;line-height:1.45}
-.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px;max-width:90%}
-.bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:40}.bg.show{display:block}
-.sh{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(430px,100%);background:#fff;border-radius:20px 20px 0 0;z-index:50;padding:10px 16px 28px;transition:.2s;max-height:88dvh;overflow:auto}.sh.show{transform:translate(-50%,0)}
-.opt{display:block;width:100%;padding:14px 0;border:0;border-bottom:1px solid #f3f4f6;background:0;text-align:left}.opt.sel{color:#16a34a;font-weight:700}
-input[type=range],input[type=number]{width:100%}
+.g{background:linear-gradient(90deg,#ff3b4a,#ff7a3a);color:#fff}.n{background:#1a1f2b;color:var(--txt);border:1px solid var(--line)}
+.r{color:#ff6b76}
+.log{background:#05070c;color:#7dffb3;font:11px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:12px;height:110px;overflow:auto;white-space:pre-wrap;word-break:break-all;border:1px solid var(--line)}
+.hint{color:var(--dim);font-size:12px;line-height:1.45}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;display:none;z-index:80;font-size:13px;max-width:90%;border:1px solid var(--line)}
+.bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:40}.bg.show{display:block}
+.sh{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(430px,100%);background:#0e121a;border-radius:20px 20px 0 0;z-index:50;padding:10px 16px 28px;transition:.2s;max-height:88dvh;overflow:auto;border:1px solid var(--line)}.sh.show{transform:translate(-50%,0)}
+.sh h3{margin:8px 0 4px}
+.opt{display:block;width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--line);background:0;text-align:left;color:var(--txt)}.opt.sel{color:var(--cy);font-weight:700}
+input[type=range],input[type=number]{width:100%;background:transparent}
+input[type=number]{background:#12151e;border:1px solid var(--line);border-radius:10px;padding:8px;color:#fff}
 .hide{display:none}
 </style>
 </head>
 <body>
-<div class="top"><button class="ib" id="back" type="button">‹</button><h1>B3PRO</h1><button class="ib" id="menu" type="button">⋮</button></div>
+<div class="top"><button class="ib" id="back" type="button">‹</button><div><div class="brand">B3PRO LAB</div><h1>Điều khiển sò</h1></div><button class="ib" id="menu" type="button">⋮</button></div>
 <div class="hero">
-<img class="cool" alt="PIVA B3PRO" src="https://raw.githubusercontent.com/thaibao-byte/piva-b3pro-control/main/b3pro.png"/>
+<div class="ring"><i><img class="cool" alt="PIVA B3PRO" src="https://raw.githubusercontent.com/thaibao-byte/piva-b3pro-control/main/b3pro.png"/></i></div>
 <div class="st"><span class="dot" id="dot"></span><span id="conn">Chưa kết nối</span></div>
 </div>
 <div class="metrics">
-  <div><div class="val" id="rpm">—</div><div class="lbl">Tốc độ quạt</div></div>
-  <div><div class="val" id="pps">--</div><div class="lbl">Giao thức cấp nguồn</div></div>
-  <div><div class="val" id="watt">—</div><div class="lbl">Công suất</div></div>
-  <div><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div></div>
+  <div class="m"><div class="val" id="rpm">—</div><div class="lbl">Tốc độ quạt</div></div>
+  <div class="m"><div class="val" id="pps">--</div><div class="lbl">Nguồn</div></div>
+  <div class="m"><div class="val" id="watt">—</div><div class="lbl">Công suất</div></div>
+  <div class="m"><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div></div>
 </div>
 <div class="grid">
   <button class="card on" id="bMode" type="button"><h3>Chế độ hiệu năng</h3><p id="modeTxt">Cực lạnh</p></button>
@@ -64,7 +72,7 @@ input[type=range],input[type=number]{width:100%}
     <button class="btn n" id="copy" type="button">Chép nhật ký</button>
     <button class="btn n" id="probe" type="button">Dò RGB</button>
   </div>
-  <div class="hint" id="info">Kết nối trước rồi mới chỉnh ép xung.</div>
+  <div class="hint" id="info">Giao diện Lab — lệnh BLE không đổi.</div>
   <div class="log" id="log"></div>
 </div>
 <div class="bg" id="bg"></div><div class="sh" id="sh"><div id="body"></div></div><div class="toast" id="toast"></div>
