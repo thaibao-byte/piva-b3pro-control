@@ -88,7 +88,7 @@ var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe3
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:1,name:"Ánh sáng chảy",color:"multi",speed:1},{id:2,name:"Nhịp thở",color:"one",speed:1},{id:3,name:"Đuổi theo",color:"one",speed:1},{id:4,name:"Đệm",color:"one",speed:1},{id:5,name:"Sáng liên tục",color:"one",speed:0},{id:6,name:"Vòng sao",color:"multi",speed:1},{id:7,name:"Linh động",color:"multi",speed:1}];
 var PROF=[{id:"yen",name:"Êm",mode:1,rage:0,pct:80,fx:2},{id:"can",name:"Cân bằng",mode:2,rage:0,pct:80,fx:1},{id:"game",name:"Chơi game",mode:3,rage:1,pct:100,fx:5}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,fw:"V212",busy:false,runAcc:0,runAt:0,ntc:null,poll:null,ledSpd:2,ledHex:"#8000FF"};
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,fw:"V212",busy:false,runAt:0,ntc:null,poll:null,ledSpd:2,ledHex:"#8000FF"};
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
@@ -101,13 +101,16 @@ function lightName(id){return lightOf(id).name}
 function rageLabel(){if(st.rage===1)return "Cuồng nộ · "+st.pct+"%";if(st.rage===2)return "Thông minh";return "Đóng"}
 function pad(n){return (n<10?"0":"")+n}
 function fmtRun(ms){var s=Math.floor(ms/1000);var h=Math.floor(s/3600);s%=3600;var m=Math.floor(s/60);s%=60;return pad(h)+":"+pad(m)+":"+pad(s)}
-function runNow(){if(st.ok&&st.on&&st.runAt)return st.runAcc+(Date.now()-st.runAt);return st.runAcc}
+
+function runNow(){if(st.ok&&st.on&&st.runAt)return Date.now()-st.runAt;return 0}
 function tickRun(){$("run").textContent=fmtRun(runNow())}
-function startRun(){if(!st.runAt)st.runAt=Date.now()}
-function stopRun(){if(st.runAt){st.runAcc+=Date.now()-st.runAt;st.runAt=0}tickRun()}
+function startRun(){if(!st.runAt)st.runAt=Date.now();tickRun()}
+function stopRun(){st.runAt=0;tickRun()}
+function resetRun(){st.runAt=0;tickRun()}
+
 function startPoll(){stopPoll();st.poll=setInterval(async function(){if(!st.ok||!st.w)return;try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}},1500)}
 function stopPoll(){if(st.poll){clearInterval(st.poll);st.poll=null}}
-function resetRun(){st.runAcc=0;st.runAt=0;tickRun()}
+
 function guessNtc(data){var i,v;for(i=0;i<data.length;i++){if(i===0||i===3||i===4)continue;v=data[i];if(v>=8&&v<=90)return v}return null}
 function hexRgb(h){h=(h||"#8000FF").replace("#","");return [parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0]}
 function ledPayload(){var L=lightOf(st.fx),sp=st.ledSpd||2,rgb=hexRgb(st.ledHex),r=rgb[0],g=rgb[1],b=rgb[2];if(L.color==="multi")return [1,st.fx,sp,sp,0,255,0,0,0,255,0,0,0,255];return [1,st.fx,sp,sp,0,r,g,b,0,r,g,b,0,r,g,b]}
@@ -116,18 +119,76 @@ function setProtUi(){$("protTxt").textContent=st.low?"Nhiệt thấp bật":"Nhi
 function save(){try{localStorage.setItem("b3pro",JSON.stringify({mode:st.mode,fx:st.fx,rage:st.rage,pct:st.pct,low:st.low,prof:st.prof,ledSpd:st.ledSpd,ledHex:st.ledHex}))}catch(e){}}
 function load(){try{var j=JSON.parse(localStorage.getItem("b3pro")||"null");if(!j)return;if(j.mode)st.mode=j.mode;if(j.fx)st.fx=j.fx;if(j.rage!=null)st.rage=j.rage;if(j.pct)st.pct=j.pct;if(j.low!=null)st.low=j.low;if(j.prof)st.prof=j.prof;if(j.ledSpd)st.ledSpd=j.ledSpd;if(j.ledHex)st.ledHex=j.ledHex}catch(e){}}
 function paint(){$("modeTxt").textContent=modeName(st.mode);$("lightTxt").textContent=lightName(st.fx);$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(st.rage?" on":"");var p=PROF.filter(function(x){return x.id===st.prof})[0];$("profTxt").textContent=p?p.name:"Chưa chọn";$("bProf").className="card"+(st.prof?" on":"");setProtUi()}
-function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));if(cmd===0xA5&&data.length>=7){$("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";$("watt").textContent=data[0]+"W";if(data[0]>0)$("pps").textContent="PPS";var t=guessNtc(data);if(t!=null){st.ntc=t;$("ntc").textContent=t+"°C"}return}if(cmd===0xA6&&data.length>=4){st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];$("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";if(st.on)startRun();else stopRun();paint();save();return}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(data.length>=2&&data[1])st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=4)st.ledSpd=data[2];paint()}}
+
+function parse(u){
+  if(!u||u[0]!==0x20||u.length<4)return;
+  var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
+  if(cmd===0xA5&&data.length>=7){
+    $("rpm").textContent=(data[3]|(data[4]<<8))+" RPM";
+    $("watt").textContent=data[0]+"W";
+    if(data[0]>0)$("pps").textContent="PPS";
+    var t=guessNtc(data);
+    if(t!=null){
+      st.ntc=t;
+      $("ntc").textContent=t+"°C";
+    }
+    return;
+  }
+  if(cmd===0xA6&&data.length>=4){
+    st.on=!!data[0];st.rage=data[1];st.mode=data[2];st.pct=data[3];
+    $("pwr").className="sw"+(st.on?" on":"");
+    $("pwrTxt").textContent=st.on?"Bật":"Tắt";
+    if(st.on)startRun();else stopRun();
+    paint();save();return;
+  }
+  if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}
+  if(cmd===0xA8){if(data.length>=2&&data[1])st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=4)st.ledSpd=data[2];paint()}
+}
+
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
 function renderLed(){var L=lightOf(st.fx);var spd=L.speed?'<p class="hint">Tốc độ hiệu ứng đèn</p><div class="spd">'+[1,2,3,4].map(function(n){return "<button type='button' data-sp='"+n+"' class='"+(st.ledSpd===n?"sel":"")+"'>"+(n===1?"Chậm":n===4?"Nhanh":n)+"</button>"}).join("")+"</div>":"";var col=L.color==="one"?'<p class="hint">Lựa chọn màu sắc · Một màu</p><input id="ledc" type="color" value="'+st.ledHex+'"/>':'<p class="hint">Lựa chọn màu sắc · Nhiều màu</p>';openSh("<h3>Cài đặt hiệu ứng đèn</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'">'+m.name+"</button>"}).join("")+col+spd+"<div class='row'><button class='btn g' id='ledGo' type='button'>Gửi đèn</button><button class='btn n' id='ledOff' type='button'>Tắt đèn</button></div>");$("body").onclick=async function(e){var b=e.target.closest("[data-fx]");if(b){st.fx=+b.getAttribute("data-fx");st.prof="";paint();save();renderLed();if(st.ok)try{await send(0x06,[1]);await send(0x07,[st.fx])}catch(err){toast(err.message)}return}var s=e.target.closest("[data-sp]");if(s){st.ledSpd=+s.getAttribute("data-sp");save();renderLed();applyLed()}};var c=$("ledc");if(c)c.oninput=function(){st.ledHex=this.value;save()};$("ledGo").onclick=applyLed;$("ledOff").onclick=async function(){if(st.ok)try{await send(0x06,[0])}catch(e){toast(e.message)}}}
-async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);await n.startNotifications();n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});dev.addEventListener("gattserverdisconnected",function(){stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối")});st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");resetRun();startRun();startPoll();try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}}
+
+async function attach(dev){
+  st.dev=dev;
+  var server=await dev.gatt.connect();
+  var svc=await server.getPrimaryService(SVC);
+  st.w=await svc.getCharacteristic(TX);
+  var n=await svc.getCharacteristic(RX);
+  await n.startNotifications();
+  n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});
+  dev.addEventListener("gattserverdisconnected",function(){
+    stopPoll();stopRun();st.ok=false;st.w=null;
+    $("dot").className="dot";$("conn").textContent="Mất kết nối";
+    $("ntc").textContent="—";
+    toast("Mất kết nối");
+  });
+  st.ok=true;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");
+  resetRun();
+  if(st.on)startRun();
+  startPoll();
+  try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}
+}
+
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
-async function power(on){st.on=on;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(on)startRun();else stopRun();if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}}
+async function power(on){
+  st.on=on;
+  $("pwr").className="sw"+(on?" on":"");
+  $("pwrTxt").textContent=on?"Bật":"Tắt";
+  if(on)startRun();else stopRun();
+  if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}
+}
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;if(!min){toast("Đã đóng hẹn giờ");return}toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){power(false);toast("Đã tắt theo lịch")},min*60000)}
 async function applyProf(p){st.prof=p.id;st.mode=p.mode;st.rage=p.rage;st.pct=p.pct;st.fx=p.fx;paint();save();if(!st.ok){toast("Đã nhớ, kết nối rồi gửi");return}try{await send(0x04,[p.mode]);await sleep(80);await send(0x09,[p.rage]);await sleep(80);if(p.rage===1)await send(0x05,[p.pct]);await applyLed();toast(p.name)}catch(e){toast(e.message)}}
+
 load();paint();setInterval(tickRun,1000);
 $("connect").onclick=ask;
-$("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
+$("dis").onclick=function(){
+  try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}
+  stopPoll();stopRun();st.ok=false;st.w=null;
+  $("dot").className="dot";$("conn").textContent="Chưa kết nối";
+  $("ntc").textContent="—";
+};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("bg").onclick=closeSh;
 $("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
