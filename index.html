@@ -124,7 +124,7 @@ function resetRun(){st.runAcc=0;st.runAt=0;tickRun()}
 function parseTemps(data){var a=[],i,v;for(i=0;i<data.length;i++){if(i===0||i===3||i===4)continue;v=data[i];if(v>=0&&v<=95)a.push(v)}if(data.length>=3&&data[1]<=95&&data[2]<=95){return data[1]<=data[2]?{cold:data[1],hot:data[2]}:{cold:data[2],hot:data[1]}}if(a.length>=2){a.sort(function(x,y){return x-y});return{cold:a[0],hot:a[a.length-1]}}if(a.length===1)return{cold:null,hot:a[0]};return{cold:null,hot:null}}
 function hexRgb(h){h=(h||"#8000FF").replace("#","");if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return [parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0]}
 function ledSp(){var sp=+st.ledSpd||2;if(sp<1)sp=1;if(sp>4)sp=4;return sp}
-function ledFrame(){var L=lightOf(st.fx),sp=ledSp(),on=1;if(L.color==="multi")return [on,st.fx,sp,sp,0,0xFF,0,0,0,0xFF,0,0,0,0xFF];var rgb=hexRgb(st.ledHex),r=rgb[0],g=rgb[1],b=rgb[2];return [on,st.fx,sp,sp,0,r,g,b,r,g,b,r,g,b]}
+function ledFrame(){var L=lightOf(st.fx),sp=ledSp(),on=1;if(L.color==="multi")return [on,st.fx,sp,1,1,0,0xFF,0xFF,0xFF,0,0xFF,0xFF,0xFF,0];var rgb=hexRgb(st.ledHex),r=rgb[0],g=rgb[1],b=rgb[2];return [on,st.fx,sp,1,1,0,r,g,b,0,r,g,b,0]}
 async function applyLed(){if(!st.ok){toast("Kết nối trước");return}st.ledOn=true;paint();var L=lightOf(st.fx),sp=ledSp(),pl=ledFrame();st.busy=true;st.holdUntil=Date.now()+3000;try{
   await send(0x06,[1]);await sleep(80);
   await send(0x07,[st.fx]);await sleep(60);
@@ -160,7 +160,7 @@ function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],da
   if(st.on)startRun();else stopRun();
   paint();save();
   return
-}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(data.length>=1)st.ledOn=!!data[0];if(data.length>=2&&data[1])st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=4)st.ledSpd=data[2];if(data.length>=8&&lightOf(st.fx).color==="one"){var r=data[5],g=data[6],b=data[7];if(r+g+b>0){st.ledHex="#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);st.ledHex=st.ledHex.toUpperCase()}}paint()}}
+}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(data.length>=1)st.ledOn=!!data[0];if(data.length>=2&&data[1])st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=4)st.ledSpd=data[2];if(data.length>=9){var r=data[6],g=data[7],b=data[8];if(r+g+b>0&&lightOf(st.fx).color==="one"){st.ledHex="#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);st.ledHex=st.ledHex.toUpperCase()}}paint()}}
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
 function renderLed(){
@@ -269,14 +269,13 @@ $("bSmart").onclick=async function(){
 $("bProbe").onclick=function(){
   openSh(
     "<h3>Dò BLE</h3>"+
-    "<p class='hint'>Gửi lệnh thử (CMD hex + data hex). Log tự ghi TX/RX — bấm <b>Sao chép log</b> rồi gửi cho mình.</p>"+
-    "<div class='cmdrow'><input id='pcmd' placeholder='CMD hex, vd: 0B' value='0B'/><input id='pdata' placeholder='DATA hex, vd: 26 00 hoặc để trống' value=''/></div>"+
+    "<p class='hint'>Đã xác nhận: <b>09[1]=Cuồng nộ</b> · <b>09[2]=Thông minh</b> · <b>0A=nguồn</b> · <b>0C=bảo vệ</b>. Sò <b>không</b> nhận nhiệt phone.</p>"+
+    "<div class='cmdrow'><input id='pcmd' placeholder='CMD hex' value='09'/><input id='pdata' placeholder='DATA hex' value='01'/></div>"+
     "<div class='row'>"+
       "<button class='btn g' id='psend' type='button'>Gửi 1 lệnh</button>"+
       "<button class='btn n' id='pbatch' type='button'>Dò nhanh 09–0F</button>"+
     "</div>"+
     "<div class='row'>"+
-      "<button class='btn n' id='ptemp' type='button'>Thử gửi nhiệt 30–42°C</button>"+
       "<button class='btn n' id='pcopy' type='button'>Sao chép log</button>"+
       "<button class='btn n' id='pclear' type='button'>Xóa log</button>"+
     "</div>"+
@@ -302,29 +301,9 @@ $("bProbe").onclick=function(){
       for(var c=0x09;c<=0x0F;c++){
         await send(c,[0]);await sleep(120);
         await send(c,[1]);await sleep(120);
-        await send(c,[0,30]);await sleep(120);
       }
       logLine("--- Xong dò nhanh ---");
       toast("Xong dò nhanh");
-    }catch(e){toast(e.message)}finally{st.busy=false}
-  };
-  $("ptemp").onclick=async function(){
-    if(!st.ok){toast("Kết nối trước");return}
-    st.busy=true;
-    logLine("--- Thử payload nhiệt độ ---");
-    try{
-      var temps=[30,34,38,42];
-      var cmds=[0x0B,0x0D,0x0E,0x0F,0x10];
-      for(var i=0;i<cmds.length;i++){
-        for(var j=0;j<temps.length;j++){
-          var t=temps[j];
-          await send(cmds[i],[t]);await sleep(100);
-          await send(cmds[i],[1,t]);await sleep(100);
-          await send(cmds[i],[0,t]);await sleep(100);
-        }
-      }
-      logLine("--- Xong thử nhiệt ---");
-      toast("Xong thử nhiệt");
     }catch(e){toast(e.message)}finally{st.busy=false}
   };
   $("pcopy").onclick=async function(){
