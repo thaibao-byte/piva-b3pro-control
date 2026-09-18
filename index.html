@@ -89,7 +89,7 @@ var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe3
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:1,name:"Ánh sáng chảy",color:"multi",speed:1},{id:2,name:"Nhịp thở",color:"one",speed:1},{id:3,name:"Đuổi theo",color:"one",speed:1},{id:4,name:"Đệm",color:"one",speed:1},{id:5,name:"Sáng liên tục",color:"one",speed:0},{id:6,name:"Vòng sao",color:"multi",speed:1},{id:7,name:"Linh động",color:"multi",speed:1}];
 var PROF=[{id:"yen",name:"Êm",mode:1,rage:0,pct:80,fx:2},{id:"can",name:"Cân bằng",mode:2,rage:0,pct:80,fx:1},{id:"game",name:"Chơi game",mode:3,rage:1,pct:100,fx:5}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,fw:"V212",busy:false,runAcc:0,runAt:0,ntc:null,poll:null,ledSpd:2,ledHex:"#8000FF"};
+var st={ok:false,dev:null,w:null,on:true,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,fw:"V212",busy:false,runAcc:0,runAt:0,ntc:null,poll:null,pollTick:0,ledSpd:2,ledHex:"#8000FF"};
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
@@ -106,7 +106,7 @@ function runNow(){if(st.ok&&st.on&&st.runAt)return st.runAcc+(Date.now()-st.runA
 function tickRun(){$("run").textContent=fmtRun(runNow())}
 function startRun(){if(!st.runAt)st.runAt=Date.now()}
 function stopRun(){if(st.runAt){st.runAcc+=Date.now()-st.runAt;st.runAt=0}tickRun()}
-function startPoll(){stopPoll();st.poll=setInterval(async function(){if(!st.ok||!st.w)return;try{await send(0x04,[]);await send(0x07,[]);await send(0x0C,[])}catch(e){}},1500)}
+function startPoll(){stopPoll();st.pollTick=0;st.poll=setInterval(async function(){if(!st.ok||!st.w||st.busy)return;st.busy=true;try{st.pollTick=(st.pollTick+1)&3;if(st.pollTick===0){await send(0x04,[]);await send(0x0C,[])}else if(st.pollTick===1){await send(0x04,[]);await send(0x07,[])}else{await send(0x04,[])}}catch(e){}finally{st.busy=false}},500)}
 function stopPoll(){if(st.poll){clearInterval(st.poll);st.poll=null}}
 function resetRun(){st.runAcc=0;st.runAt=0;tickRun()}
 function parseTemps(data){var a=[],i,v;for(i=0;i<data.length;i++){if(i===0||i===3||i===4)continue;v=data[i];if(v>=0&&v<=95)a.push(v)}if(data.length>=3&&data[1]<=95&&data[2]<=95){return data[1]<=data[2]?{cold:data[1],hot:data[2]}:{cold:data[2],hot:data[1]}}if(a.length>=2){a.sort(function(x,y){return x-y});return{cold:a[0],hot:a[a.length-1]}}if(a.length===1)return{cold:null,hot:a[0]};return{cold:null,hot:null}}
