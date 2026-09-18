@@ -74,7 +74,7 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 <div class="metrics">
   <div class="m"><div class="val" id="run">00:00:00</div><div class="lbl">Thời gian chạy</div></div>
   <div class="m"><div class="val" id="pps">--</div><div class="lbl">Nguồn</div></div>
-  <div class="m"><button class="sw on" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Bật</div><div class="lbl" id="timerLeft" style="color:var(--cy);min-height:12px"></div></div>
+  <div class="m"><button class="sw" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Tắt</div><div class="lbl" id="timerLeft" style="color:var(--cy);min-height:12px"></div></div>
 </div>
 <div class="grid">
   <button class="card on" id="bMode" type="button"><h3>Chế độ hiệu năng</h3><p id="modeTxt">Cực lạnh</p></button>
@@ -96,7 +96,7 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe34729bb3",RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:1,name:"Ánh sáng chảy",color:"multi",speed:1},{id:2,name:"Nhịp thở",color:"one",speed:1},{id:3,name:"Đuổi theo",color:"one",speed:1},{id:4,name:"Đệm",color:"one",speed:1},{id:5,name:"Sáng liên tục",color:"one",speed:0},{id:6,name:"Vòng sao",color:"multi",speed:1},{id:7,name:"Linh động",color:"multi",speed:1}];
-var st={ok:false,dev:null,w:null,on:true,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,timerEnd:0,fw:"V212",busy:false,holdUntil:0,runAcc:0,runAt:0,ntc:null,poll:null,pollTick:0,ledSpd:2,ledHex:"#8000FF",ledOn:true};
+var st={ok:false,dev:null,w:null,on:false,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,timerEnd:0,fw:"V212",busy:false,holdUntil:0,runAcc:0,runAt:0,ntc:null,poll:null,pollTick:0,ledSpd:2,ledHex:"#8000FF",ledOn:true};
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
@@ -177,7 +177,7 @@ function renderLed(){
     if(st.ok)try{st.busy=true;await send(0x06,[0]);toast("Đã tắt đèn")}catch(e){toast(e.message)}finally{st.busy=false}
   };
 }
-async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);await n.startNotifications();n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});dev.addEventListener("gattserverdisconnected",function(){stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối")});st.ok=true;st.rage=0;st.holdUntil=0;$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");resetRun();startRun();paint();startPoll();try{await send(0x07,[]);await send(0x0C,[]);await send(0x04,[st.mode])}catch(e){}}
+async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);await n.startNotifications();n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});dev.addEventListener("gattserverdisconnected",function(){stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối")});st.ok=true;st.rage=0;st.holdUntil=0;st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="Tắt";$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối");resetRun();paint();startPoll();try{await send(0x07,[]);await sleep(40);await send(0x0C,[])}catch(e){}}
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 async function power(on){st.on=on;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(on)startRun();else stopRun();if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}}
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;st.timerEnd=0;paintTimer();if(!min){toast("Đã đóng hẹn giờ");return}st.timerEnd=Date.now()+min*60000;toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){st.timer=null;st.timerEnd=0;paintTimer();power(false);toast("Đã tắt theo lịch")},min*60000);paintTimer()}
