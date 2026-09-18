@@ -137,17 +137,23 @@ $("bLight").onclick=renderLed;
 $("bRage").onclick=function(){
   openSh("<h3>Cuồng nộ</h3><button class='opt"+(st.rage===1?" sel":"")+"' id='rOn'>Bật</button><button class='opt"+(st.rage!==1?" sel":"")+"' id='rOff'>Tắt</button><div id='fanBox' class='"+(st.rage===1?"":" hide")+"'><p class='hint' id='pctLbl'>Tốc độ quạt "+st.pct+"%</p><input id='rng' type='range' min='80' max='100' value='"+Math.max(80,st.pct)+"'/><div class='row'><button class='btn g' id='apply'>Gửi % quạt</button></div></div>");
   function showFan(on){var b=$("fanBox");if(b)b.className=on?"":"hide"}
-  async function setRage(on){st.rage=on?1:0;st.prof="";paint();save();showFan(on);if(!st.ok){toast("Kết nối trước");return}try{await send(0x09,[on?1:0]);await sleep(60);if(on){await send(0x05,[st.pct]);await sleep(40);await send(0x09,[2,st.pct]);await sleep(40);await send(0x05,[1,st.pct])}}catch(e){toast(e.message)}}
+  async function setRage(on){if(!st.ok){toast("Kết nối trước");return}st.busy=true;try{await send(0x09,[0]);await sleep(50);if(on){await send(0x09,[1]);await sleep(50);await send(0x05,[st.pct]);st.rage=1}else{st.rage=0}st.prof="";paint();save();showFan(!!on);toast(on?"Đã bật Cuồng nộ":"Đã tắt Cuồng nộ")}catch(e){toast(e.message)}finally{st.busy=false}}
   $("rOn").onclick=function(){setRage(true)};
   $("rOff").onclick=function(){setRage(false)};
   var rng=$("rng");if(rng)rng.oninput=function(){$("pctLbl").textContent="Tốc độ quạt "+this.value+"%";st.pct=+this.value};
-  $("apply").onclick=async function(){if(st.rage!==1){toast("Bật Cuồng nộ trước");return}if(!st.ok){toast("Kết nối trước");return}st.pct=+$("rng").value;paint();save();try{await send(0x09,[1]);await sleep(50);await send(0x05,[st.pct]);await sleep(40);await send(0x09,[2,st.pct]);await sleep(40);await send(0x05,[1,st.pct]);toast("Đã gửi quạt "+st.pct+"%")}catch(e){toast(e.message)}};
+  $("apply").onclick=async function(){if(st.rage!==1){toast("Bật Cuồng nộ trước");return}if(!st.ok){toast("Kết nối trước");return}st.pct=+$("rng").value;paint();save();st.busy=true;try{await send(0x09,[1]);await sleep(40);await send(0x05,[st.pct]);toast("Đã gửi quạt "+st.pct+"%")}catch(e){toast(e.message)}finally{st.busy=false}};
 };
 $("bSmart").onclick=async function(){
   if(!st.ok){toast("Kết nối trước");return}
   var on=st.rage!==2;
-  st.rage=on?2:0;st.prof="";paint();save();
-  try{await send(0x09,[on?2:0]);toast(on?"Đã bật Thông minh":"Đã tắt Thông minh")}catch(e){toast(e.message)}
+  st.busy=true;
+  try{
+    await send(0x09,[0]);
+    await sleep(50);
+    if(on){await send(0x09,[2]);st.rage=2}else{st.rage=0}
+    st.prof="";paint();save();
+    toast(on?"Đã bật Thông minh":"Đã tắt Thông minh");
+  }catch(e){toast(e.message)}finally{st.busy=false}
 };
 $("bProt").onclick=function(){openSh("<h3>Cơ chế bảo vệ</h3><button class='opt' id='lon'>Bật nhiệt thấp</button><button class='opt' id='loff'>Tắt nhiệt thấp</button>");$("lon").onclick=async function(){if(st.ok)try{await send(0x0C,[1])}catch(e){toast(e.message)}};$("loff").onclick=async function(){if(st.ok)try{await send(0x0C,[0])}catch(e){toast(e.message)}}};
 })();
