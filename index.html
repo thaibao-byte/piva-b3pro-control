@@ -59,6 +59,12 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 .spd button{flex:1;border:1px solid var(--line);background:#1a1f2b;border-radius:10px;padding:8px 0;font-size:12px}
 .spd button.sel{border-color:var(--cy);color:var(--cy)}
 .hide{display:none}
+.chart-wrap{margin:4px 12px 10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px}
+.chart-wrap .ch-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.chart-wrap .ch-title span{font-size:12px;font-weight:700;color:var(--txt)}
+.chart-wrap .leg{display:flex;gap:10px;font-size:10px;color:var(--dim)}
+.chart-wrap .leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.chart-wrap canvas{width:100%;height:110px;display:block}
 </style>
 </head>
 <body>
@@ -75,6 +81,13 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
   <div class="m"><div class="val" id="run">00:00:00</div><div class="lbl">Thời gian chạy</div></div>
   <div class="m"><div class="val" id="pps">--</div><div class="lbl">Nguồn</div></div>
   <div class="m"><button class="sw" id="pwr" type="button"><i></i></button><div class="lbl" id="pwrTxt">Tắt</div><div class="lbl" id="timerLeft" style="color:var(--cy);min-height:12px"></div></div>
+</div>
+<div class="chart-wrap">
+  <div class="ch-title">
+    <span>Biểu đồ nhiệt độ</span>
+    <div class="leg"><span><i style="background:#ff3b4a"></i>Mặt nóng</span><span><i style="background:#2ee6ff"></i>Mặt lạnh</span></div>
+  </div>
+  <canvas id="tChart" width="400" height="110"></canvas>
 </div>
 <div class="grid">
   <button class="card on" id="bMode" type="button"><h3>Chế độ hiệu năng</h3><p id="modeTxt">Cực lạnh</p></button>
@@ -136,7 +149,7 @@ function load(){try{var j=JSON.parse(localStorage.getItem("b3pro")||"null");if(!
 function ringSpd(){return {1:"5.2s",2:"3.4s",3:"2.2s",4:"1.35s"}[ledSp()]||"3.4s"}
 function paintRing(){var el=document.querySelector(".ring");if(!el)return;el.className="ring";if(!st.ledOn){el.classList.add("fx-off");return}el.style.setProperty("--ring-spd",ringSpd());el.style.setProperty("--ring-col",st.ledHex||"#8000FF");var map={1:"fx-flow",2:"fx-breath",3:"fx-chase",4:"fx-soft",5:"fx-solid",6:"fx-star",7:"fx-flow"};el.classList.add(map[st.fx]||"fx-flow");if(lightOf(st.fx).color==="multi")el.style.removeProperty("--ring-col")}
 function paint(){if(st.rage===1){$("modeTxt").textContent="Khóa · Cuồng nộ";$("bMode").className="card";$("bMode").style.opacity=".45"}else if(st.rage===2){$("modeTxt").textContent="Khóa · Thông minh";$("bMode").className="card";$("bMode").style.opacity=".45"}else{$("modeTxt").textContent=modeName(st.mode);$("bMode").className="card on";$("bMode").style.opacity="1"}$("lightTxt").textContent=st.ledOn?lightName(st.fx):"Tắt";$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(st.rage===1?" on":"");$("smartTxt").textContent=st.rage===2?"Bật":"Tắt";$("bSmart").className="card"+(st.rage===2?" on":"");setProtUi();paintRing()}
-function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));if(cmd===0xA5&&data.length>=7){var watt=data[0]|0,rpm=(data[3]|(data[4]<<8));$("rpm").textContent=rpm+" RPM";$("watt").textContent=watt+"W";if(watt>0)$("pps").textContent="PPS";var tp=parseTemps(data);if(tp.hot!=null){$("ntcHot").textContent=tp.hot+"°C";st.ntc=tp.hot}if(tp.cold!=null)$("ntcCold").textContent=tp.cold+"°C";if(Date.now()>=st.holdUntil){if(watt>0||rpm>50){if(!st.on){st.on=true;$("pwr").className="sw on";$("pwrTxt").textContent="Bật";startRun()}}else if(watt===0&&rpm===0){if(st.on){st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="Tắt";stopRun()}}}return}if(cmd===0xA6&&data.length>=4){
+function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));if(cmd===0xA5&&data.length>=7){var watt=data[0]|0,rpm=(data[3]|(data[4]<<8));$("rpm").textContent=rpm+" RPM";$("watt").textContent=watt+"W";if(watt>0)$("pps").textContent="PPS";var tp=parseTemps(data);if(tp.hot!=null){$("ntcHot").textContent=tp.hot+"°C";st.ntc=tp.hot}if(tp.cold!=null)$("ntcCold").textContent=tp.cold+"°C";pushTemp(tp.hot,tp.cold);if(Date.now()>=st.holdUntil){if(watt>0||rpm>50){if(!st.on){st.on=true;$("pwr").className="sw on";$("pwrTxt").textContent="Bật";startRun()}}else if(watt===0&&rpm===0){if(st.on){st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="Tắt";stopRun()}}}return}if(cmd===0xA6&&data.length>=4){
   st.on=!!data[0];
   var rg=data[1]|0;if(rg>2)rg=0;
   var md=data[2]|0;
@@ -204,7 +217,60 @@ async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var sv
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 async function power(on){st.on=on;st.holdUntil=Date.now()+2500;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(on)startRun();else stopRun();if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}}
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;st.timerEnd=0;paintTimer();if(!min){toast("Đã đóng hẹn giờ");return}st.timerEnd=Date.now()+min*60000;toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){st.timer=null;st.timerEnd=0;paintTimer();power(false);toast("Đã tắt theo lịch")},min*60000);paintTimer()}
-load();paint();setInterval(tickRun,1000);
+var hist={hot:[],cold:[],max:60};
+function pushTemp(h,c){
+  if(h!=null)hist.hot.push(h);else hist.hot.push(hist.hot.length?hist.hot[hist.hot.length-1]:null);
+  if(c!=null)hist.cold.push(c);else hist.cold.push(hist.cold.length?hist.cold[hist.cold.length-1]:null);
+  if(hist.hot.length>hist.max){hist.hot.shift();hist.cold.shift()}
+  drawChart();
+}
+function drawChart(){
+  var cv=$("tChart");if(!cv)return;
+  var dpr=window.devicePixelRatio||1;
+  var w=cv.clientWidth||360,h=110;
+  if(cv.width!==Math.floor(w*dpr)||cv.height!==Math.floor(h*dpr)){cv.width=Math.floor(w*dpr);cv.height=Math.floor(h*dpr)}
+  var ctx=cv.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  var padL=28,padR=8,padT=8,padB=16;
+  var iw=w-padL-padR,ih=h-padT-padB;
+  var vals=hist.hot.concat(hist.cold).filter(function(v){return v!=null});
+  var ymin=0,ymax=60;
+  if(vals.length){ymin=Math.max(0,Math.min.apply(null,vals)-5);ymax=Math.min(100,Math.max.apply(null,vals)+5);if(ymax-ymin<15)ymax=ymin+15}
+  function yx(v){return padT+ih*(1-(v-ymin)/(ymax-ymin||1))}
+  function xx(i,n){return padL+(n<=1?iw/2:iw*i/(n-1))}
+  ctx.strokeStyle="#1e2433";ctx.lineWidth=1;
+  for(var g=0;g<4;g++){
+    var gy=padT+ih*g/3;
+    ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+iw,gy);ctx.stroke();
+    var tv=ymax-(ymax-ymin)*g/3;
+    ctx.fillStyle="#8b93a7";ctx.font="9px sans-serif";ctx.textAlign="right";
+    ctx.fillText(Math.round(tv)+"°",padL-4,gy+3);
+  }
+  function strokeSeries(arr,color){
+    var n=arr.length;if(n<2)return;
+    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineJoin="round";
+    var started=false;
+    for(var i=0;i<n;i++){
+      if(arr[i]==null){started=false;continue}
+      var x=xx(i,n),y=yx(arr[i]);
+      if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    if(arr[n-1]!=null){
+      ctx.beginPath();ctx.fillStyle=color;
+      ctx.arc(xx(n-1,n),yx(arr[n-1]),3,0,Math.PI*2);ctx.fill();
+    }
+  }
+  strokeSeries(hist.hot,"#ff3b4a");
+  strokeSeries(hist.cold,"#2ee6ff");
+  ctx.fillStyle="#8b93a7";ctx.font="9px sans-serif";ctx.textAlign="left";
+  if(hist.hot.length){
+    var lh=hist.hot[hist.hot.length-1],lc=hist.cold[hist.cold.length-1];
+    ctx.fillText((lh!=null?lh+"°":"—")+" / "+(lc!=null?lc+"°":"—"),padL,h-4);
+  }
+}
+load();paint();drawChart();setInterval(tickRun,1000);window.addEventListener("resize",function(){drawChart()});
 $("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
