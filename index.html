@@ -224,7 +224,7 @@ function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
 function renderLedMod(){
   openSh("<h3>LED Mod · Pháp sư</h3><p class='hint'>Web gửi màu liên tục (mode sáng cố định). Giữ tab mở.</p>"+
-    (st.modName?("<p class='hint' style='color:var(--cy)'>Đang: <b>"+st.modName+"</b></p>":"")+
+    (st.modName?("<p class='hint' style='color:var(--cy)'>Đang: <b>"+st.modName+"</b></p>"):"")+
     "<button class='opt' data-mod='rainbow' type='button'>Rainbow</button>"+
     "<button class='opt' data-mod='police' type='button'>Police đỏ–xanh</button>"+
     "<button class='opt' data-mod='strobe' type='button'>Strobe</button>"+
