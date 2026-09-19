@@ -49,6 +49,16 @@ async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var sv
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 function disconnect(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopPoll();stopRun();st.ok=false;st.w=null;setCls("dot","dot");setTxt("conn","Chưa kết nối");paint()}
 async function power(on){st.on=on;st.holdUntil=Date.now()+2500;setCls("pwr","sw"+(on?" on":""));setTxt("pwrTxt",on?"Bật":"Tắt");if(on)startRun();else stopRun();if(st.ok)try{await sendQ(0x0A,[on?1:0],20)}catch(e){toast(e.message)}}
+var volLevel=0.8,volMuted=false;
+function applyVol(){
+  var vid=$("coolVid");if(!vid)return;
+  vid.muted=volMuted||volLevel<=0;
+  vid.volume=Math.max(0,Math.min(1,volLevel));
+  var pct=$("volPct"),rng=$("volRange"),btn=$("btnMute");
+  if(pct)pct.textContent=Math.round((volMuted?0:volLevel)*100)+"%";
+  if(rng)rng.value=Math.round((volMuted?0:volLevel)*100);
+  if(btn)btn.textContent=(volMuted||volLevel<=0)?"🔇":"🔊";
+}
 var DEFAULT_COOL="https://raw.githubusercontent.com/thaibao-byte/piva-b3pro-control/main/b3pro.png";
 var mediaBlob=null;
 function showDefaultCool(){
@@ -57,6 +67,7 @@ function showDefaultCool(){
   if(img){img.src=DEFAULT_COOL;img.classList.remove("custom","hide")}
   if(wrap)wrap.classList.remove("has-custom");
   if(rst)rst.classList.add("hide");
+  var vw=$("volWrap");if(vw)vw.classList.add("hide");
   if(mediaBlob){try{URL.revokeObjectURL(mediaBlob)}catch(e){}mediaBlob=null}
   try{localStorage.removeItem("b3pro_media")}catch(e){}
 }
@@ -71,6 +82,7 @@ function showCustomMedia(url,isVideo){
   }
   if(wrap)wrap.classList.add("has-custom");
   if(rst)rst.classList.remove("hide");
+  var vw=$("volWrap");if(vw){if(isVideo){vw.classList.remove("hide");applyVol()}else vw.classList.add("hide")}
 }
 function loadSavedMedia(){
   try{
@@ -86,6 +98,13 @@ function onMediaFile(file){
   if(mediaBlob){try{URL.revokeObjectURL(mediaBlob)}catch(e){}}
   mediaBlob=URL.createObjectURL(file);
   showCustomMedia(mediaBlob,isVid);
+  if(isVid){
+    var v=$("coolVid");
+    if(v){
+      v.muted=false;volMuted=false;applyVol();
+      v.play().catch(function(){v.muted=true;volMuted=true;applyVol();v.play().catch(function(){})});
+    }
+  }
   if(!isVid&&file.size<2.5e6){
     var r=new FileReader();
     r.onload=function(){try{localStorage.setItem("b3pro_media",JSON.stringify({type:file.type,data:r.result}))}catch(e){}};
@@ -110,4 +129,6 @@ $("bTimer").onclick=renderTimer;
 var _bm=$("btnMedia");if(_bm)_bm.onclick=function(){var i=$("mediaInput");if(i)i.click()};
 var _br=$("btnMediaReset");if(_br)_br.onclick=function(){showDefaultCool();toast("Đã về ảnh gốc")};
 var _mi=$("mediaInput");if(_mi)_mi.onchange=function(){var f=this.files&&this.files[0];if(f)onMediaFile(f);this.value=""};
+var _vr=$("volRange");if(_vr)_vr.oninput=function(){volLevel=this.value/100;volMuted=volLevel<=0;applyVol()};
+var _mute=$("btnMute");if(_mute)_mute.onclick=function(){volMuted=!volMuted;if(!volMuted&&volLevel<=0)volLevel=0.5;applyVol()};
 })();
