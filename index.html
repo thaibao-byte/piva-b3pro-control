@@ -244,6 +244,32 @@ function fallbackCopy(txt){
   document.body.removeChild(ta);
 }
 
+async function resetDevice(){
+  if(!st.ok){toast("Kết nối trước");return}
+  st.busy=true;st.holdUntil=Date.now()+8000;
+  toast("Đang reset sò...");
+  try{
+    try{localStorage.removeItem("b3pro")}catch(e){}
+    if(st.timer){clearTimeout(st.timer);st.timer=null;st.timerEnd=0;paintTimer()}
+    await send(0x09,[0]);await sleep(120);
+    await send(0x04,[3]);await sleep(120);
+    await send(0x0C,[0]);await sleep(120);
+    await send(0x0A,[0]);await sleep(400);
+    await send(0x0A,[1]);await sleep(300);
+    st.fx=1;st.ledSpd=3;st.ledHex="#8000FF";st.ledOn=true;
+    await send(0x06,[1]);await sleep(80);
+    await send(0x07,[1]);await sleep(100);
+    await send(0x08,[1,1,3,1,1,0,255,255,255,0,255,255,255,0]);
+    st.mode=3;st.rage=0;st.pct=100;st.low=false;
+    paint();save();
+    toast("✅ Đã reset sò về mặc định!");
+  }catch(e){
+    toast("Lỗi reset: "+e.message);
+  }finally{
+    st.busy=false;
+  }
+}
+
 function renderLab(){
   openSh(
     "<h3>🧪 Phòng Lab Dò Lệnh & LED</h3>"+
@@ -397,7 +423,7 @@ async function attach(dev){
 
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome / Bluefy WebBLE");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 async function power(on){st.on=on;st.holdUntil=Date.now()+2500;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(on)startRun();else stopRun();if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}}
-function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;st.timerEnd=0;paintTimer();if(!min){toast("Đã đóng hẹn giờ");return}st.timerEnd=Date.now()+min*60000;toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){st.timer=null;st.timerEnd=0;paintTimer();power(false);toast("Đã tắt theo lịch")},min*60000);paintTimer()}
+function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timerEnd=0;paintTimer();if(!min){toast("Đã đóng hẹn giờ");return}st.timerEnd=Date.now()+min*60000;toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){st.timer=null;st.timerEnd=0;paintTimer();power(false);toast("Đã tắt theo lịch")},min*60000);paintTimer()}
 var hist={hot:[],cold:[],max:60};
 function pushTemp(h,c){
   if(h!=null)hist.hot.push(h);else hist.hot.push(hist.hot.length?hist.hot[hist.hot.length-1]:null);
@@ -440,7 +466,25 @@ $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("bg").onclick=closeSh;
 $("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
 $("bFw").onclick=function(){openSh("<h3>Firmware</h3><p>"+st.fw+"</p>")};
-$("menu").onclick=function(){openSh("<h3>Tùy chọn</h3><button class='opt r' id='mDis' type='button'>Ngắt kết nối</button><button class='opt' id='mTimer' type='button'>Tắt nguồn theo lịch trình</button>");$("mDis").onclick=function(){closeSh();$("dis").click()};$("mTimer").onclick=function(){var leftHint=st.timerEnd?("<p class='hint' id='leftHint'>Còn lại: —</p>"):"";openSh("<h3>Tắt nguồn theo lịch trình</h3>"+leftHint+[0,30,60,120,180].map(function(m){return "<button class='opt' data-m='"+m+"' type='button'>"+(m?("Sau "+m+" phút"):"Đóng")+"</button>"}).join("")+"<input id='cm' type='number' min='1' max='720' value='45'/><div class='row'><button class='btn g' id='cgo' type='button'>Đặt</button></div>");if(st.timerEnd){(function tickHint(){var h=$("leftHint");if(!h||!st.timerEnd)return;var left=Math.max(0,st.timerEnd-Date.now());var sec=Math.ceil(left/1000),m=Math.floor(sec/60);sec%=60;h.textContent="Còn lại "+pad(m)+":"+pad(sec);if(left>0)setTimeout(tickHint,1000)})();}$("body").onclick=function(e){var b=e.target.closest("[data-m]");if(!b)return;armTimer(+b.getAttribute("data-m"));closeSh()};$("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()}}};
+
+$("menu").onclick=function(){
+  openSh(
+    "<h3>Tùy chọn</h3>"+
+    "<button class='opt r' id='mDis' type='button'>Ngắt kết nối</button>"+
+    "<button class='opt' id='mReset' style='color:#ff7a3a;font-weight:700' type='button'>🔄 Khôi phục & Reset sò</button>"+
+    "<button class='opt' id='mTimer' type='button'>Tắt nguồn theo lịch trình</button>"
+  );
+  $("mDis").onclick=function(){closeSh();$("dis").click()};
+  $("mReset").onclick=function(){closeSh();resetDevice()};
+  $("mTimer").onclick=function(){
+    var leftHint=st.timerEnd?("<p class='hint' id='leftHint'>Còn lại: —</p>"):"";
+    openSh("<h3>Tắt nguồn theo lịch trình</h3>"+leftHint+[0,30,60,120,180].map(function(m){return "<button class='opt' data-m='"+m+"' type='button'>"+(m?("Sau "+m+" phút"):"Đóng")+"</button>"}).join("")+"<input id='cm' type='number' min='1' max='720' value='45'/><div class='row'><button class='btn g' id='cgo' type='button'>Đặt</button></div>");
+    if(st.timerEnd){(function tickHint(){var h=$("leftHint");if(!h||!st.timerEnd)return;var left=Math.max(0,st.timerEnd-Date.now());var sec=Math.ceil(left/1000),m=Math.floor(sec/60);sec%=60;h.textContent="Còn lại "+pad(m)+":"+pad(sec);if(left>0)setTimeout(tickHint,1000)})();}
+    $("body").onclick=function(e){var b=e.target.closest("[data-m]");if(!b)return;armTimer(+b.getAttribute("data-m"));closeSh()};
+    $("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()};
+  };
+};
+
 $("bMode").onclick=function(){if(!st.ok){toast("Kết nối trước");return}if(st.rage===1){toast("Đang Cuồng nộ — tắt trước khi đổi hiệu năng");return}if(st.rage===2){toast("Đang Thông minh — tắt trước khi đổi hiệu năng");return}openSh("<h3>Cài đặt hiệu suất</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'">'+m.name+'</button>'}).join(""));$("body").onclick=async function(e){var b=e.target.closest("[data-id]");if(!b)return;st.mode=+b.getAttribute("data-id");st.prof="";st.holdUntil=Date.now()+5000;paint();save();closeSh();if(st.ok)try{st.busy=true;await send(0x04,[st.mode]);toast(modeName(st.mode))}catch(err){toast(err.message)}finally{st.busy=false}}};
 $("bLight").onclick=renderLed;
 $("bLab").onclick=renderLab;
