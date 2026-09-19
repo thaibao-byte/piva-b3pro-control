@@ -68,7 +68,7 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 .chart-wrap canvas{width:100%;height:110px;display:block}
 .lab-sec{background:#12151e;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
 .lab-sec h4{margin:0 0 6px;font-size:13px;color:var(--lab)}
-.lab-log{background:#080a10;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:11px;color:#2ee6ff;max-height:85px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.lab-log{background:#080a10;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:11px;color:#2ee6ff;max-height:95px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
 </style>
 </head>
 <body>
@@ -122,7 +122,7 @@ function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clear
 function labLog(msg){
   var time=new Date().toTimeString().split(" ")[0];
   lab.logs.unshift("["+time+"] "+msg);
-  if(lab.logs.length>25)lab.logs.pop();
+  if(lab.logs.length>30)lab.logs.pop();
   var el=$("labLogBox");
   if(el)el.textContent=lab.logs.join("\n");
 }
@@ -228,12 +228,28 @@ async function sendProbe(modeId, c1Hex, c2Hex, p1, p2){
   }catch(e){toast(e.message)}
 }
 
+function copyText(txt){
+  if(!txt){toast("Log đang trống");return}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){toast("Đã chép log!")}).catch(function(){fallbackCopy(txt)});
+  }else{
+    fallbackCopy(txt);
+  }
+}
+function fallbackCopy(txt){
+  var ta=document.createElement("textarea");
+  ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand("copy");toast("Đã chép log!")}catch(e){toast("Hãy tự bôi đen để chép")}
+  document.body.removeChild(ta);
+}
+
 function renderLab(){
   openSh(
     "<h3>🧪 Phòng Lab Dò Lệnh & LED</h3>"+
     "<div class='lab-sec'>"+
       "<h4>1. Dò Chế Độ Ẩn (Mode ID 0 - 15)</h4>"+
-      "<p class='hint'>Hiện tại sò đã có mode 1-7. Hãy thử 0, 8, 9, 10, 11...</p>"+
+      "<p class='hint'>Thử các mode 0, 8, 9, 10, 11...</p>"+
       "<div class='row' style='align-items:center'>"+
         "<button class='btn n' id='modePrev' style='padding:8px 14px'>-</button>"+
         "<b id='modeLbl' style='font-size:16px;color:var(--cy);flex:1;text-align:center'>Mode: "+lab.probeFx+"</b>"+
@@ -272,7 +288,10 @@ function renderLab(){
     "<div class='lab-sec'>"+
       "<h4>Nhật Ký BLE (On-screen Log)</h4>"+
       "<div class='lab-log' id='labLogBox'>"+(lab.logs.join("\n")||"Chờ dữ liệu...")+"</div>"+
-      "<button class='btn n' id='labClear' style='margin-top:6px;padding:4px 8px;font-size:11px'>Xóa log</button>"+
+      "<div class='row' style='margin-top:8px;gap:8px'>"+
+        "<button class='btn g' id='labCopy' style='flex:2;padding:8px 10px'>📋 Sao chép log</button>"+
+        "<button class='btn n' id='labClear' style='flex:1;padding:8px 10px'>Xóa log</button>"+
+      "</div>"+
     "</div>"
   );
 
@@ -312,6 +331,7 @@ function renderLab(){
     }
   };
 
+  $("labCopy").onclick=function(){copyText(lab.logs.join("\n"))};
   $("labClear").onclick=function(){lab.logs=[];var el=$("labLogBox");if(el)el.textContent=""};
 }
 
