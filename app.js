@@ -41,7 +41,7 @@ function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
 function renderLed(){var list=LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'">'+m.name+'</button>'}).join("");openSh("<h3>Hiệu ứng ánh sáng</h3><div class='tog'><span>Đèn LED</span><button class='sw"+(st.ledOn?" on":"")+"' id='ledTog' type='button'><i></i></button></div>"+list+"<p class='hint'>Firmware chỉ hỗ trợ 7 mode cố định.</p>");$("body").onclick=function(e){var b=e.target.closest("[data-fx]");if(b){st.fx=+b.getAttribute("data-fx");st.ledOn=true;save();paint();if(st.ok)applyLed();renderLed()}};$("ledTog").onclick=function(){st.ledOn=!st.ledOn;save();paint();if(st.ok)applyLed();renderLed()}}
 function renderRage(){openSh("<h3>Cuồng nộ</h3><div class='tog'><span>Bật cuồng nộ</span><button class='sw"+(st.rage===1?" on":"")+"' id='rTog' type='button'><i></i></button></div><p class='hint'>Tốc độ quạt (80–100%)</p><div class='step'><button type='button' id='rMinus'>−</button><div class='num' id='rNum'>"+st.pct+"%</div><button type='button' id='rPlus'>+</button></div><input id='rRange' type='range' min='80' max='100' value='"+Math.max(80,st.pct)+"'/><div class='row'><button class='btn g' id='rApply' type='button'>Gửi</button></div>");function showPct(){setTxt("rNum",st.pct+"%");$("rRange").value=st.pct;setTxt("rageTxt",st.rage===1?("Bật · "+st.pct+"%"):"Tắt")}async function setOn(on){if(!st.ok){toast("Kết nối trước");return}st.holdUntil=Date.now()+4000;try{if(on){if(st.rage===2)await sendQ(0x09,[0],100);st.rage=1;paint();await sendQ(0x09,[1],100);await sendQ(0x05,[st.pct],60);await sendQ(0x09,[1],40)}else{st.rage=0;paint();await sendQ(0x09,[0],100);await sendQ(0x04,[st.mode>=1&&st.mode<=3?st.mode:3],40)}save();toast(on?"Cuồng nộ ON":"Cuồng nộ OFF")}catch(e){toast(e.message)}renderRage()}$("rTog").onclick=function(){setOn(st.rage!==1)};$("rMinus").onclick=function(){st.pct=Math.max(80,st.pct-1);showPct()};$("rPlus").onclick=function(){st.pct=Math.min(100,st.pct+1);showPct()};$("rRange").oninput=function(){st.pct=+this.value;showPct()};$("rApply").onclick=async function(){if(!st.ok){toast("Kết nối trước");return}if(st.rage!==1){await setOn(true);return}st.holdUntil=Date.now()+3000;try{await sendQ(0x09,[1],50);await sendQ(0x05,[st.pct],40);toast("Quạt "+st.pct+"%");save();paint()}catch(e){toast(e.message)}}}
-function renderTimer(){var th=0,tm=30,ts=0;if(st.timerEnd){var left=Math.max(0,st.timerEnd-Date.now());var sec=Math.ceil(left/1000);th=Math.floor(sec/3600);sec%=3600;tm=Math.floor(sec/60);ts=sec%60}function mkOpts(n,cur){var h="";for(var i=0;i<=n;i++)h+="<div data-v='"+i+"' class='"+(i===cur?"on":"")+"'>"+i+"</div>";return h}openSh("<h3>Hẹn giờ tắt</h3><div class='pickers'><div class='pick-col'><div class='lab'>Giờ</div><div class='mid'></div><div class='pick-scroll' id='psH'>"+mkOpts(12,th)+"</div></div><div class='pick-col'><div class='lab'>Phút</div><div class='mid'></div><div class='pick-scroll' id='psM'>"+mkOpts(59,tm)+"</div></div><div class='pick-col'><div class='lab'>Giây</div><div class='mid'></div><div class='pick-scroll' id='psS'>"+mkOpts(59,ts)+"</div></div></div><div class='row'><button class='btn g' id='tGo' type='button'>Đặt hẹn giờ</button><button class='btn n' id='tCancel' type='button'>Huỷ</button></div><p class='hint'>"+(st.timerEnd?"Đang hẹn giờ":"Vuốt lên/xuống")+"</p>");function snap(el){var items=el.querySelectorAll("div[data-v]");var mid=el.scrollTop+el.clientHeight/2;var best=null,bd=1e9;items.forEach(function(it){var c=it.offsetTop+it.offsetHeight/2;var d=Math.abs(c-mid);if(d<bd){bd=d;best=it}});items.forEach(function(it){it.className=it===best?"on":""});return best?+best.getAttribute("data-v"):0}function bind(id,val){var el=$(id);if(!el)return;var item=el.querySelector("div[data-v='"+val+"']");if(item)el.scrollTop=item.offsetTop-(el.clientHeight/2-item.offsetHeight/2);var t;el.addEventListener("scroll",function(){clearTimeout(t);t=setTimeout(function(){var v=snap(el);var it=el.querySelector("div[data-v='"+v+"']");if(it)el.scrollTo({top:it.offsetTop-(el.clientHeight/2-it.offsetHeight/2),behavior:"smooth"})},80)})}bind("psH",th);bind("psM",tm);bind("psS",ts);$("tGo").onclick=function(){th=snap($("psH"));tm=snap($("psM"));ts=snap($("psS"));var total=th*3600+tm*60+ts;if(total<=0){toast("Chọn thời gian > 0");return}if(st.timer)clearTimeout(st.timer);st.timerEnd=Date.now()+total*1000;st.timer=setTimeout(function(){st.timer=null;st.timerEnd=0;paintTimer();power(false);toast("Đã tắt theo lịch")},total*1000);paint();toast("Đã hẹn "+pad(th)+":"+pad(tm)+":"+pad(ts));closeSh()};$("tCancel").onclick=function(){if(st.timer)clearTimeout(st.timer);st.timer=null;st.timerEnd=0;paint();toast("Đã huỷ hẹn giờ");closeSh()}}
+function renderTimer(){var th=0,tm=30,ts=0;if(st.timerEnd){var left=Math.max(0,st.timerEnd-Date.now());var sec=Math.ceil(left/1000);th=Math.floor(sec/3600);sec%=3600;tm=Math.floor(sec/60);ts=sec%60}function mkOpts(n,cur){var h="";for(var i=0;i<=n;i++)h+="<div data-v='"+i+"' class='"+(i===cur?" on":"")+"'>"+i+"</div>";return h}openSh("<h3>Hẹn giờ tắt</h3><div class='pickers'><div class='pick-col'><div class='lab'>Giờ</div><div class='mid'></div><div class='pick-scroll' id='psH'>"+mkOpts(12,th)+"</div></div><div class='pick-col'><div class='lab'>Phút</div><div class='mid'></div><div class='pick-scroll' id='psM'>"+mkOpts(59,tm)+"</div></div><div class='pick-col'><div class='lab'>Giây</div><div class='mid'></div><div class='pick-scroll' id='psS'>"+mkOpts(59,ts)+"</div></div></div><div class='row'><button class='btn g' id='tGo' type='button'>Đặt hẹn giờ</button><button class='btn n' id='tCancel' type='button'>Huỷ</button></div><p class='hint'>"+(st.timerEnd?"Đang hẹn giờ":"Vuốt lên/xuống")+"</p>");function snap(el){var items=el.querySelectorAll("div[data-v]");var mid=el.scrollTop+el.clientHeight/2;var best=null,bd=1e9;items.forEach(function(it){var c=it.offsetTop+it.offsetHeight/2;var d=Math.abs(c-mid);if(d<bd){bd=d;best=it}});items.forEach(function(it){it.className=it===best?"on":""});return best?+best.getAttribute("data-v"):0}function bind(id,val){var el=$(id);if(!el)return;var item=el.querySelector("div[data-v='"+val+"']");if(item)el.scrollTop=item.offsetTop-(el.clientHeight/2-item.offsetHeight/2);var t;el.addEventListener("scroll",function(){clearTimeout(t);t=setTimeout(function(){var v=snap(el);var it=el.querySelector("div[data-v='"+v+"']");if(it)el.scrollTo({top:it.offsetTop-(el.clientHeight/2-it.offsetHeight/2),behavior:"smooth"})},80)})}bind("psH",th);bind("psM",tm);bind("psS",ts);$("tGo").onclick=function(){th=snap($("psH"));tm=snap($("psM"));ts=snap($("psS"));var total=th*3600+tm*60+ts;if(total<=0){toast("Chọn thời gian > 0");return}if(st.timer)clearTimeout(st.timer);st.timerEnd=Date.now()+total*1000;st.timer=setTimeout(function(){st.timer=null;st.timerEnd=0;paintTimer();power(false);toast("Đã tắt theo lịch")},total*1000);paint();toast("Đã hẹn "+pad(th)+":"+pad(tm)+":"+pad(ts));closeSh()};$("tCancel").onclick=function(){if(st.timer)clearTimeout(st.timer);st.timer=null;st.timerEnd=0;paint();toast("Đã huỷ hẹn giờ");closeSh()}}
 var hist={hot:[],cold:[],max:120};
 function pushTemp(h,c){hist.hot.push(h!=null?h:(hist.hot.length?hist.hot[hist.hot.length-1]:null));hist.cold.push(c!=null?c:(hist.cold.length?hist.cold[hist.cold.length-1]:null));if(hist.hot.length>hist.max){hist.hot.shift();hist.cold.shift()}if(!drawChart._raf)drawChart._raf=requestAnimationFrame(function(){drawChart._raf=0;drawChart()})}
 function drawChart(){var cv=$("tChart");if(!cv)return;var dpr=window.devicePixelRatio||1,w=cv.clientWidth||360,h=120;if(cv.width!==Math.floor(w*dpr)||cv.height!==Math.floor(h*dpr)){cv.width=Math.floor(w*dpr);cv.height=Math.floor(h*dpr)}var ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);var padL=28,padR=8,padT=8,padB=16,iw=w-padL-padR,ih=h-padT-padB;var vals=hist.hot.concat(hist.cold).filter(function(v){return v!=null});var ymin=0,ymax=60;if(vals.length){ymin=Math.max(0,Math.min.apply(null,vals)-3);ymax=Math.min(100,Math.max.apply(null,vals)+3);if(ymax-ymin<10)ymax=ymin+10}function yx(v){return padT+ih*(1-(v-ymin)/(ymax-ymin||1))}function xx(i,n){return padL+(n<=1?iw/2:iw*i/(n-1))}ctx.strokeStyle="#e4e8ef";ctx.lineWidth=1;for(var g=0;g<4;g++){var gy=padT+ih*g/3;ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+iw,gy);ctx.stroke();ctx.fillStyle="#8a91a0";ctx.font="9px sans-serif";ctx.textAlign="right";ctx.fillText(Math.round(ymax-(ymax-ymin)*g/3)+"°",padL-4,gy+3)}function series(arr,color){var pts=[];for(var i=0;i<arr.length;i++)if(arr[i]!=null)pts.push({x:xx(i,arr.length),y:yx(arr[i])});if(pts.length<2)return;ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.4;ctx.lineJoin="round";ctx.lineCap="round";ctx.moveTo(pts[0].x,pts[0].y);for(var i=1;i<pts.length-1;i++){var xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc)}ctx.quadraticCurveTo(pts[pts.length-2].x,pts[pts.length-2].y,pts[pts.length-1].x,pts[pts.length-1].y);ctx.stroke();ctx.beginPath();ctx.fillStyle=color;ctx.arc(pts[pts.length-1].x,pts[pts.length-1].y,3.5,0,Math.PI*2);ctx.fill()}series(hist.hot,"#e84545");series(hist.cold,"#00b8d9")}
@@ -49,25 +49,28 @@ async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var sv
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 function disconnect(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopPoll();stopRun();st.ok=false;st.w=null;setCls("dot","dot");setTxt("conn","Chưa kết nối");paint()}
 async function power(on){st.on=on;st.holdUntil=Date.now()+2500;setCls("pwr","sw"+(on?" on":""));setTxt("pwrTxt",on?"Bật":"Tắt");if(on)startRun();else stopRun();if(st.ok)try{await sendQ(0x0A,[on?1:0],20)}catch(e){toast(e.message)}}
-var volLevel=0.8,volMuted=false;
-function applyVol(){
-  var vid=$("coolVid");if(!vid)return;
-  vid.muted=volMuted||volLevel<=0;
-  vid.volume=Math.max(0,Math.min(1,volLevel));
-  var pct=$("volPct"),rng=$("volRange"),btn=$("btnMute");
-  if(pct)pct.textContent=Math.round((volMuted?0:volLevel)*100)+"%";
-  if(rng)rng.value=Math.round((volMuted?0:volLevel)*100);
-  if(btn)btn.textContent=(volMuted||volLevel<=0)?"🔇":"🔊";
-}
 var DEFAULT_COOL="https://raw.githubusercontent.com/thaibao-byte/piva-b3pro-control/main/b3pro.png";
 var mediaBlob=null;
+var vidVol=1,vidMuted=false;
+function setVolUi(){
+  var rg=$("volRange"),pct=$("volPct"),bm=$("btnMute"),vid=$("coolVid");
+  if(rg)rg.value=Math.round(vidVol*100);
+  if(pct)pct.textContent=Math.round(vidVol*100)+"%";
+  if(bm)bm.textContent=vidMuted||vidVol===0?"🔇":"🔊";
+  if(vid){vid.volume=vidMuted?0:vidVol;vid.muted=!!vidMuted}
+}
+function showVol(on){
+  var vw=$("volWrap");
+  if(!vw)return;
+  if(on)vw.classList.remove("hide");else vw.classList.add("hide");
+}
 function showDefaultCool(){
   var img=$("coolImg"),vid=$("coolVid"),wrap=$("coolWrap"),rst=$("btnMediaReset");
-  if(vid){vid.pause();vid.removeAttribute("src");vid.load();vid.classList.add("hide")}
+  if(vid){vid.pause();vid.removeAttribute("src");vid.load();vid.classList.add("hide");vid.muted=false}
   if(img){img.src=DEFAULT_COOL;img.classList.remove("custom","hide")}
   if(wrap)wrap.classList.remove("has-custom");
   if(rst)rst.classList.add("hide");
-  var vw=$("volWrap");if(vw)vw.classList.add("hide");
+  showVol(false);
   if(mediaBlob){try{URL.revokeObjectURL(mediaBlob)}catch(e){}mediaBlob=null}
   try{localStorage.removeItem("b3pro_media")}catch(e){}
 }
@@ -75,14 +78,20 @@ function showCustomMedia(url,isVideo){
   var img=$("coolImg"),vid=$("coolVid"),wrap=$("coolWrap"),rst=$("btnMediaReset");
   if(isVideo){
     if(img)img.classList.add("hide");
-    if(vid){vid.src=url;vid.classList.remove("hide");vid.play().catch(function(){})}
+    if(vid){
+      vid.muted=false;vid.volume=vidMuted?0:vidVol;
+      vid.src=url;vid.classList.remove("hide");
+      var p=vid.play();
+      if(p&&p.catch)p.catch(function(){});
+    }
+    showVol(true);setVolUi();
   }else{
     if(vid){vid.pause();vid.classList.add("hide");vid.removeAttribute("src")}
     if(img){img.src=url;img.classList.add("custom");img.classList.remove("hide")}
+    showVol(false);
   }
   if(wrap)wrap.classList.add("has-custom");
   if(rst)rst.classList.remove("hide");
-  var vw=$("volWrap");if(vw){if(isVideo){vw.classList.remove("hide");applyVol()}else vw.classList.add("hide")}
 }
 function loadSavedMedia(){
   try{
@@ -98,13 +107,6 @@ function onMediaFile(file){
   if(mediaBlob){try{URL.revokeObjectURL(mediaBlob)}catch(e){}}
   mediaBlob=URL.createObjectURL(file);
   showCustomMedia(mediaBlob,isVid);
-  if(isVid){
-    var v=$("coolVid");
-    if(v){
-      v.muted=false;volMuted=false;applyVol();
-      v.play().catch(function(){v.muted=true;volMuted=true;applyVol();v.play().catch(function(){})});
-    }
-  }
   if(!isVid&&file.size<2.5e6){
     var r=new FileReader();
     r.onload=function(){try{localStorage.setItem("b3pro_media",JSON.stringify({type:file.type,data:r.result}))}catch(e){}};
@@ -128,7 +130,7 @@ $("bProt").onclick=function(){openSh("<h3>Cơ chế bảo vệ</h3><div class='t
 $("bTimer").onclick=renderTimer;
 var _bm=$("btnMedia");if(_bm)_bm.onclick=function(){var i=$("mediaInput");if(i)i.click()};
 var _br=$("btnMediaReset");if(_br)_br.onclick=function(){showDefaultCool();toast("Đã về ảnh gốc")};
+var _vr=$("volRange");if(_vr)_vr.oninput=function(){vidVol=Math.max(0,Math.min(1,(+this.value)/100));if(vidVol>0)vidMuted=false;setVolUi()};
+var _mute=$("btnMute");if(_mute)_mute.onclick=function(){vidMuted=!vidMuted;if(!vidMuted&&vidVol===0)vidVol=0.8;setVolUi();var vid=$("coolVid");if(vid&&!vidMuted)vid.play().catch(function(){})};
 var _mi=$("mediaInput");if(_mi)_mi.onchange=function(){var f=this.files&&this.files[0];if(f)onMediaFile(f);this.value=""};
-var _vr=$("volRange");if(_vr)_vr.oninput=function(){volLevel=this.value/100;volMuted=volLevel<=0;applyVol()};
-var _mute=$("btnMute");if(_mute)_mute.onclick=function(){volMuted=!volMuted;if(!volMuted&&volLevel<=0)volLevel=0.5;applyVol()};
 })();
