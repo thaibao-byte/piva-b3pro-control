@@ -67,6 +67,12 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 .chart-wrap canvas{width:100%;height:110px;display:block}
 .swatch{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
 .swatch button{width:28px;height:28px;border-radius:50%;border:2px solid #333;padding:0}
+.wheel-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin:10px 0}
+.wheel-box{position:relative;width:220px;height:220px}
+#cWheel{width:220px;height:220px;border-radius:50%;cursor:crosshair;touch-action:none;display:block}
+.wheel-dot{position:absolute;width:18px;height:18px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #000,0 2px 8px rgba(0,0,0,.5);pointer-events:none;transform:translate(-50%,-50%);left:50%;top:50%}
+.wheel-preview{width:100%;height:36px;border-radius:10px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;text-shadow:0 1px 2px #000}
+.bri{width:100%;accent-color:var(--cy)}
 </style>
 </head>
 <body>
@@ -189,8 +195,7 @@ function parse(u){
   var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
   if(cmd===0xA5&&data.length>=7){
     var watt=data[0]|0,rpm=(data[3]|(data[4]<<8));
-    $("rpm").textContent=rpm+" RPM";
-    $("watt").textContent=watt+"W";
+    $("rpm").textContent=rpm+" RPM";$("watt").textContent=watt+"W";
     if(watt>0)$("pps").textContent="PPS";else if(!st.on)$("pps").textContent="--";
     var tp=parseTemps(data);
     if(tp.hot!=null){$("ntcHot").textContent=tp.hot+"°C";st.ntc=tp.hot}
@@ -203,9 +208,7 @@ function parse(u){
     return;
   }
   if(cmd===0xA6&&data.length>=4){
-    st.on=!!data[0];
-    var rg=data[1]|0;if(rg>2)rg=0;
-    var md=data[2]|0,pct=data[3]|0;
+    st.on=!!data[0];var rg=data[1]|0;if(rg>2)rg=0;var md=data[2]|0,pct=data[3]|0;
     if(Date.now()>=st.holdUntil){st.rage=rg;if(rg===0&&md>=1&&md<=3)st.mode=md;if(rg===1&&pct>=80&&pct<=100)st.pct=pct}
     $("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";
     if(st.on)startRun();else stopRun();paint();save();return;
@@ -223,7 +226,7 @@ function parse(u){
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
 function renderLedMod(){
-  openSh("<h3>LED Mod · Pháp sư</h3><p class='hint'>Web gửi màu liên tục (mode sáng cố định). Giữ tab mở.</p>"+
+  openSh("<h3>LED Mod · Pháp sư</h3><p class='hint'>Web gửi màu liên tục. Chỉ chạy nếu sò nhận 0x08 RGB. Giữ tab mở.</p>"+
     (st.modName?("<p class='hint' style='color:var(--cy)'>Đang: <b>"+st.modName+"</b></p>"):"")+
     "<button class='opt' data-mod='rainbow' type='button'>Rainbow</button>"+
     "<button class='opt' data-mod='police' type='button'>Police đỏ–xanh</button>"+
@@ -238,16 +241,62 @@ function renderLedMod(){
 }
 function renderLed(){
   var L=lightOf(st.fx);
-  var spdHtml=L.speed?('<p class="hint">Tốc độ (5 nấc)</p><div class="spd">'+[1,2,3,4,5].map(function(n){return "<button type='button' data-sp='"+n+"' class='"+(ledSp()===n?"sel":"")+"'>"+n+"</button>"}).join("")+"</div>"):"";
+  var spdHtml=L.speed?('<p class="hint">Tốc độ (5 nấc) — sò có thể bỏ qua nếu firmware không hỗ trợ</p><div class="spd">'+[1,2,3,4,5].map(function(n){return "<button type='button' data-sp='"+n+"' class='"+(ledSp()===n?"sel":"")+"'>"+n+"</button>"}).join("")+"</div>"):"";
   var sw=["#FF0000","#FF3B30","#FF7A00","#FFD600","#A8E10C","#22D37A","#00C853","#2EE6FF","#00B0FF","#3B82F6","#5856D6","#8000FF","#BF5AF2","#FF2D95","#FF2D55","#FFFFFF","#C0C0C0","#8B4513"];
   var colHtml=L.color==="one"?(
-    '<p class="hint">Màu LED (chạm là gửi)</p>'+
-    '<div class="row" style="align-items:center;gap:10px"><input id="ledc" type="color" value="'+st.ledHex+'" style="width:56px;height:40px"/><input id="ledhex" type="text" value="'+st.ledHex+'" maxlength="7" style="flex:1;background:#12151e;border:1px solid var(--line);border-radius:10px;padding:8px;color:#fff"/></div>'+
-    '<div class="swatch">'+sw.map(function(c){return "<button type='button' data-c='"+c+"' style='background:"+c+";border-color:"+(String(st.ledHex).toUpperCase()===c?"#fff":"#333")+"'></button>"}).join("")+"</div>"
+    '<p class="hint">Bánh xe màu · chạm chọn</p>'+
+    '<div class="wheel-wrap"><div class="wheel-box"><canvas id="cWheel" width="220" height="220"></canvas><div class="wheel-dot" id="cDot"></div></div>'+
+    '<input class="bri" id="cBri" type="range" min="15" max="100" value="100"/>'+
+    '<div class="wheel-preview" id="cPrev" style="background:'+st.ledHex+'">'+st.ledHex+'</div>'+
+    '<div class="row" style="align-items:center;gap:10px;width:100%"><input id="ledc" type="color" value="'+st.ledHex+'" style="width:56px;height:40px"/><input id="ledhex" type="text" value="'+st.ledHex+'" maxlength="7" style="flex:1;background:#12151e;border:1px solid var(--line);border-radius:10px;padding:8px;color:#fff"/></div>'+
+    '<div class="swatch">'+sw.map(function(c){return "<button type='button' data-c='"+c+"' style='background:"+c+";border-color:"+(String(st.ledHex).toUpperCase()===c?"#fff":"#333")+"'></button>"}).join("")+"</div></div>"
   ):'<p class="hint">Mode nhiều màu — sò tự rainbow</p>';
   openSh("<h3>Hiệu ứng ánh sáng</h3>"+LIGHT.map(function(m){return '<button class="opt'+(st.fx===m.id?" sel":"")+'" data-fx="'+m.id+'">'+m.name+(m.color==="one"?" · 1 màu":" · multi")+"</button>"}).join("")+colHtml+spdHtml+
     "<div class='row'><button class='btn g' id='ledGo' type='button'>Áp dụng</button><button class='btn n' id='ledOff' type='button'>Tắt đèn</button></div>"+
-    "<div class='row'><button class='btn g' id='ledMod' type='button' style='width:100%'>LED Mod · Pháp sư</button></div>");
+    "<div class='row'><button class='btn g' id='ledMod' type='button' style='width:100%'>LED Mod · Pháp sư</button></div>"+
+    "<p class='hint'>Nếu sò không đổi màu/tốc độ: firmware chỉ chạy 7 mode có sẵn, RGB tùy ý qua BLE có thể bị bỏ qua.</p>");
+  function paintWheel(){
+    var cv=$("cWheel");if(!cv)return;
+    var ctx=cv.getContext("2d"),R=110,cx=110,cy=110;
+    var img=ctx.createImageData(220,220),d=img.data;
+    for(var y=0;y<220;y++)for(var x=0;x<220;x++){
+      var dx=x-cx,dy=y-cy,rad=Math.sqrt(dx*dx+dy*dy),i=(y*220+x)*4;
+      if(rad>R){d[i+3]=0;continue}
+      var ang=(Math.atan2(dy,dx)*180/Math.PI+360)%360,sat=rad/R;
+      var rgb=hsv2rgb(ang,sat,1);
+      d[i]=rgb[0];d[i+1]=rgb[1];d[i+2]=rgb[2];d[i+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.strokeStyle="#222";ctx.lineWidth=2;ctx.stroke();
+  }
+  function wheelPick(clientX,clientY){
+    var cv=$("cWheel");if(!cv)return;
+    var rect=cv.getBoundingClientRect(),x=clientX-rect.left,y=clientY-rect.top;
+    var dx=x-110,dy=y-110,rad=Math.sqrt(dx*dx+dy*dy);
+    if(rad>110){dx*=110/rad;dy*=110/rad;rad=110}
+    var ang=(Math.atan2(dy,dx)*180/Math.PI+360)%360,sat=rad/110;
+    var bri=($("cBri")?+$("cBri").value:100)/100;
+    var rgb=hsv2rgb(ang,sat,bri);
+    var hex="#"+("0"+rgb[0].toString(16)).slice(-2)+("0"+rgb[1].toString(16)).slice(-2)+("0"+rgb[2].toString(16)).slice(-2);
+    hex=hex.toUpperCase();setColor(hex);
+    var dot=$("cDot");if(dot){dot.style.left=(110+dx)+"px";dot.style.top=(110+dy)+"px"}
+    var prev=$("cPrev");if(prev){prev.style.background=hex;prev.textContent=hex}
+    if(st.ok)scheduleApply();
+  }
+  paintWheel();
+  (function bindWheel(){
+    var cv=$("cWheel");if(!cv)return;var down=false;
+    cv.addEventListener("pointerdown",function(e){down=true;cv.setPointerCapture(e.pointerId);wheelPick(e.clientX,e.clientY);e.preventDefault()});
+    cv.addEventListener("pointermove",function(e){if(!down)return;wheelPick(e.clientX,e.clientY);e.preventDefault()});
+    cv.addEventListener("pointerup",function(){down=false});
+    cv.addEventListener("pointercancel",function(){down=false});
+    var bri=$("cBri");if(bri)bri.oninput=function(){
+      var rgb=hexRgb(st.ledHex),mx=Math.max(rgb[0],rgb[1],rgb[2],1),f=+this.value/100;
+      var r=Math.round(rgb[0]/mx*255*f),g=Math.round(rgb[1]/mx*255*f),b=Math.round(rgb[2]/mx*255*f);
+      var hex="#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);
+      setColor(hex);var prev=$("cPrev");if(prev){prev.style.background=hex;prev.textContent=hex.toUpperCase()}if(st.ok)scheduleApply();
+    };
+  })();
   function setColor(v){if(!v)return;v=String(v).trim();if(v[0]!=="#")v="#"+v;if(!/^#[0-9A-Fa-f]{6}$/.test(v)&&!/^#[0-9A-Fa-f]{3}$/.test(v))return;st.ledHex=v.length===4?("#"+v[1]+v[1]+v[2]+v[2]+v[3]+v[3]).toUpperCase():v.toUpperCase();st.ledOn=true;save();paintRing();var c=$("ledc"),h=$("ledhex");if(c)c.value=st.ledHex;if(h)h.value=st.ledHex}
   function scheduleApply(){clearTimeout(st.ledDebounce);st.ledDebounce=setTimeout(function(){applyLed()},80)}
   $("body").onclick=function(e){
@@ -314,7 +363,7 @@ $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}ca
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("bg").onclick=closeSh;
 $("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
-$("bFw").onclick=function(){openSh("<h3>Firmware</h3><p>"+st.fw+" · YiChip</p><p class='hint'>Lab dò mode: dùng menu ⋮ nếu cần reset.</p>")};
+$("bFw").onclick=function(){openSh("<h3>Firmware</h3><p>"+st.fw+" · YiChip</p><p class='hint'>RGB tùy chỉnh / mode LED mới thật sự cần file .bin OTA từ hãng. Unlock bootloader không công khai cho B3PRO.</p>")};
 $("menu").onclick=function(){
   openSh("<h3>Tùy chọn</h3><button class='opt r' id='mDis' type='button'>Ngắt kết nối</button><button class='opt' id='mReset' type='button'>Reset sò (khi lỗi)</button><button class='opt' id='mTimer' type='button'>Tắt nguồn theo lịch</button>");
   $("mDis").onclick=function(){closeSh();$("dis").click()};
@@ -322,14 +371,9 @@ $("menu").onclick=function(){
     if(!st.ok){toast("Kết nối trước");return}
     closeSh();stopLedMod();st.busy=true;st.ledLock=true;stopPoll();st.holdUntil=Date.now()+5000;
     try{
-      await send(0x0A,[0]);await sleep(250);
-      await send(0x06,[0]);await sleep(150);
-      await send(0x09,[0]);await sleep(150);
-      await send(0x04,[st.mode>=1&&st.mode<=3?st.mode:3]);await sleep(120);
-      await send(0x07,[1]);await sleep(80);
-      await send(0x0C,[st.low?1:0]);
-      st.rage=0;st.on=false;st.ledOn=false;paint();
-      toast("Đã reset lệnh sò");
+      await send(0x0A,[0]);await sleep(250);await send(0x06,[0]);await sleep(150);await send(0x09,[0]);await sleep(150);
+      await send(0x04,[st.mode>=1&&st.mode<=3?st.mode:3]);await sleep(120);await send(0x07,[1]);await sleep(80);await send(0x0C,[st.low?1:0]);
+      st.rage=0;st.on=false;st.ledOn=false;paint();toast("Đã reset lệnh sò");
     }catch(e){toast(e.message)}
     finally{st.busy=false;st.ledLock=false;st.holdUntil=Date.now()+800;if(st.ok)startPoll()}
   };
