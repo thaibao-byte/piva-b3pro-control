@@ -49,7 +49,53 @@ async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var sv
 async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 function disconnect(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopPoll();stopRun();st.ok=false;st.w=null;setCls("dot","dot");setTxt("conn","Chưa kết nối");paint()}
 async function power(on){st.on=on;st.holdUntil=Date.now()+2500;setCls("pwr","sw"+(on?" on":""));setTxt("pwrTxt",on?"Bật":"Tắt");if(on)startRun();else stopRun();if(st.ok)try{await sendQ(0x0A,[on?1:0],20)}catch(e){toast(e.message)}}
-load();paint();drawChart();setInterval(tickRun,1000);window.addEventListener("resize",function(){drawChart()});
+var DEFAULT_COOL="https://raw.githubusercontent.com/thaibao-byte/piva-b3pro-control/main/b3pro.png";
+var mediaBlob=null;
+function showDefaultCool(){
+  var img=$("coolImg"),vid=$("coolVid"),wrap=$("coolWrap"),rst=$("btnMediaReset");
+  if(vid){vid.pause();vid.removeAttribute("src");vid.load();vid.classList.add("hide")}
+  if(img){img.src=DEFAULT_COOL;img.classList.remove("custom","hide")}
+  if(wrap)wrap.classList.remove("has-custom");
+  if(rst)rst.classList.add("hide");
+  if(mediaBlob){try{URL.revokeObjectURL(mediaBlob)}catch(e){}mediaBlob=null}
+  try{localStorage.removeItem("b3pro_media")}catch(e){}
+}
+function showCustomMedia(url,isVideo){
+  var img=$("coolImg"),vid=$("coolVid"),wrap=$("coolWrap"),rst=$("btnMediaReset");
+  if(isVideo){
+    if(img)img.classList.add("hide");
+    if(vid){vid.src=url;vid.classList.remove("hide");vid.play().catch(function(){})}
+  }else{
+    if(vid){vid.pause();vid.classList.add("hide");vid.removeAttribute("src")}
+    if(img){img.src=url;img.classList.add("custom");img.classList.remove("hide")}
+  }
+  if(wrap)wrap.classList.add("has-custom");
+  if(rst)rst.classList.remove("hide");
+}
+function loadSavedMedia(){
+  try{
+    var j=JSON.parse(localStorage.getItem("b3pro_media")||"null");
+    if(!j||!j.data)return;
+    if(j.type&&j.type.indexOf("video")===0)return;
+    showCustomMedia(j.data,false);
+  }catch(e){}
+}
+function onMediaFile(file){
+  if(!file)return;
+  var isVid=file.type.indexOf("video")===0;
+  if(mediaBlob){try{URL.revokeObjectURL(mediaBlob)}catch(e){}}
+  mediaBlob=URL.createObjectURL(file);
+  showCustomMedia(mediaBlob,isVid);
+  if(!isVid&&file.size<2.5e6){
+    var r=new FileReader();
+    r.onload=function(){try{localStorage.setItem("b3pro_media",JSON.stringify({type:file.type,data:r.result}))}catch(e){}};
+    r.readAsDataURL(file);
+  }else{
+    try{localStorage.removeItem("b3pro_media")}catch(e){}
+  }
+  toast(isVid?"Đã gắn video":"Đã đổi ảnh");
+}
+load();loadSavedMedia();paint();drawChart();setInterval(tickRun,1000);window.addEventListener("resize",function(){drawChart()});
 $("connect").onclick=ask;
 $("back").onclick=function(){if(st.ok)disconnect();else ask()};
 $("bg").onclick=closeSh;
@@ -61,4 +107,7 @@ $("bRage").onclick=renderRage;
 $("bSmart").onclick=async function(){if(!st.ok){toast("Kết nối trước");return}var on=st.rage!==2;st.holdUntil=Date.now()+4000;try{if(on){if(st.rage===1)await sendQ(0x09,[0],100);st.rage=2;paint();await sendQ(0x09,[2],100);await sendQ(0x09,[2],40)}else{st.rage=0;paint();await sendQ(0x09,[0],100);await sendQ(0x04,[st.mode>=1&&st.mode<=3?st.mode:3],40)}save();toast(on?"Thông minh ON":"Thông minh OFF")}catch(e){toast(e.message)}};
 $("bProt").onclick=function(){openSh("<h3>Cơ chế bảo vệ</h3><div class='tog'><span>Bảo vệ nhiệt thấp</span><button class='sw"+(st.low?" on":"")+"' id='pTog' type='button'><i></i></button></div><p class='hint'>Khi bật: sò tự giảm/tắt nếu mặt lạnh quá thấp.</p>");$("pTog").onclick=async function(){if(!st.ok){toast("Kết nối trước");return}var v=!st.low;try{await sendQ(0x0C,[v?1:0],40);st.low=v;setProtUi();save();paint();toast(v?"Nhiệt thấp ON":"Nhiệt thấp OFF");$("pTog").className="sw"+(v?" on":"")}catch(e){toast(e.message)}}};
 $("bTimer").onclick=renderTimer;
+var _bm=$("btnMedia");if(_bm)_bm.onclick=function(){var i=$("mediaInput");if(i)i.click()};
+var _br=$("btnMediaReset");if(_br)_br.onclick=function(){showDefaultCool();toast("Đã về ảnh gốc")};
+var _mi=$("mediaInput");if(_mi)_mi.onchange=function(){var f=this.files&&this.files[0];if(f)onMediaFile(f);this.value=""};
 })();
