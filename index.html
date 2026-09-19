@@ -56,6 +56,22 @@ body{
 #btnMediaReset{left:8px;bottom:8px;font-size:15px;background:rgba(26,29,38,.88);color:#fff}
 #btnMediaReset.hide{opacity:0;pointer-events:none;transform:scale(.8)}
 .cool-wrap.has-custom #btnMedia{opacity:.85}
+.vol-wrap{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin:0 24px 8px;padding:8px 14px;
+  background:var(--card);border:1px solid var(--line);border-radius:999px;
+  box-shadow:var(--shadow);
+  transition:opacity .25s,transform .25s;
+}
+.vol-wrap.hide{display:none!important}
+.vol-mute{
+  width:36px;height:36px;border:0;border-radius:50%;background:#f0f3f8;
+  font-size:16px;cursor:pointer;flex-shrink:0;
+}
+.vol-wrap input[type=range]{
+  flex:1;max-width:160px;margin:0;accent-color:var(--cy);height:4px;
+}
+.vol-pct{font-size:12px;font-weight:700;color:var(--dim);min-width:36px;text-align:right}
 .ring.fx-flow::before,.ring.fx-star::before,.ring.fx-chase::before{animation:spin var(--ring-spd,3s) linear infinite}
 .ring.fx-breath::before,.ring.fx-soft::before{
   animation:breath var(--ring-spd,2.6s) ease-in-out infinite;
@@ -141,13 +157,18 @@ input[type=range]{width:100%;accent-color:var(--cy);margin:8px 0}.hide{display:n
       <i class="core">
         <div class="cool-wrap" id="coolWrap">
           <img class="cool" id="coolImg" alt="B3PRO" src="https://raw.githubusercontent.com/thaibao-byte/piva-b3pro-control/main/b3pro.png" width="180" height="180"/>
-          <video class="cool-vid hide" id="coolVid" playsinline muted loop autoplay></video>
+          <video class="cool-vid hide" id="coolVid" playsinline loop></video>
           <button type="button" class="media-btn" id="btnMedia" title="Đổi ảnh/video">＋</button>
           <button type="button" class="media-btn reset hide" id="btnMediaReset" title="Ảnh gốc">↺</button>
           <input type="file" id="mediaInput" class="hide" accept="image/*,video/*,.heic,.heif"/>
         </div>
       </i>
     </div>
+  </div>
+  <div class="vol-wrap hide" id="volWrap">
+    <button type="button" class="vol-mute" id="btnMute" title="Tắt/bật tiếng">🔊</button>
+    <input type="range" id="volRange" min="0" max="100" value="80" aria-label="Âm lượng"/>
+    <span class="vol-pct" id="volPct">80%</span>
   </div>
   <div class="st"><span class="dot" id="dot"></span><span id="conn">Chưa kết nối</span></div>
   <div class="fwline" id="fwLine">Firmware: — · YiChip</div>
@@ -181,11 +202,11 @@ input[type=range]{width:100%;accent-color:var(--cy);margin:8px 0}.hide{display:n
   <div class="box" id="connBox">
     <div class="row"><button class="btn g" id="connect" type="button">Kết nối B3PRO</button></div>
   </div>
-  <div class="foot">PIVA B3PRO · WEB 8D · V55</div>
+  <div class="foot">PIVA B3PRO · WEB 8D · V56</div>
 </div>
 <div class="bg" id="bg"></div>
 <div class="sh" id="sh"><div id="body"></div></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=55"></script>
+<script src="app.js?v=56"></script>
 </body>
 </html>
