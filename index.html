@@ -68,9 +68,9 @@ body{
   width:36px;height:36px;border:0;border-radius:50%;background:#f0f3f8;
   font-size:16px;cursor:pointer;flex-shrink:0;
 }
-.vol-wrap input[type=range]{
-  flex:1;max-width:160px;margin:0;accent-color:var(--cy);height:4px;
-}
+.vol-wrap input[type=range]{flex:1;accent-color:var(--cy);margin:0}
+.vol-hint{font-size:10px;color:var(--dim);text-align:center;margin:-2px 24px 8px;display:none}
+.vol-wrap:not(.hide)+.vol-hint{display:block}
 .vol-pct{font-size:12px;font-weight:700;color:var(--dim);min-width:36px;text-align:right}
 .ring.fx-flow::before,.ring.fx-star::before,.ring.fx-chase::before{animation:spin var(--ring-spd,3s) linear infinite}
 .ring.fx-breath::before,.ring.fx-soft::before{
@@ -167,9 +167,10 @@ input[type=range]{width:100%;accent-color:var(--cy);margin:8px 0}.hide{display:n
   </div>
   <div class="vol-wrap hide" id="volWrap">
     <button type="button" class="vol-mute" id="btnMute" title="Tắt/bật tiếng">🔊</button>
-    <input type="range" id="volRange" min="0" max="100" value="80" aria-label="Âm lượng"/>
-    <span class="vol-pct" id="volPct">80%</span>
+    <input type="range" id="volRange" min="0" max="100" value="100" aria-label="Âm lượng"/>
+    <span class="vol-pct" id="volPct">100%</span>
   </div>
+  <div class="vol-hint" id="volHint">Âm lượng theo nút volume điện thoại · thanh trượt là mức phụ</div>
   <div class="st"><span class="dot" id="dot"></span><span id="conn">Chưa kết nối</span></div>
   <div class="fwline" id="fwLine">Firmware: — · YiChip</div>
   <div class="metrics">
