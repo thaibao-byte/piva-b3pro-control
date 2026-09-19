@@ -109,7 +109,7 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe34729bb3",RX="49535343-1e4d-4bd9-ba61-23c647249616";
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:1,name:"Ánh sáng chảy",color:"multi",speed:1},{id:2,name:"Nhịp thở",color:"one",speed:1},{id:3,name:"Đuổi theo",color:"one",speed:1},{id:4,name:"Ánh sáng mềm",color:"one",speed:1},{id:5,name:"Sáng liên tục",color:"one",speed:0},{id:6,name:"Ánh sao",color:"multi",speed:1},{id:7,name:"Linh động",color:"multi",speed:1}];
-var st={ok:false,dev:null,w:null,on:false,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,timerEnd:0,fw:"V212",busy:false,holdUntil:0,runAcc:0,runAt:0,ntc:null,poll:null,pollTick:0,ledSpd:3,ledHex:"#8000FF",ledOn:true};
+var st={ok:false,dev:null,w:null,on:false,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,timerEnd:0,fw:"V212",busy:false,holdUntil:0,runAcc:0,runAt:0,ntc:null,poll:null,pollTick:0,ledSpd:3,ledHex:"#8000FF",ledOn:true,probeMode:false,lastA8Fx:0,probeLog:[],a8Raw:""};
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
@@ -117,8 +117,8 @@ function frame(cmd,data){data=data||[];var p=[0x20,cmd,data.length].concat(data)
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 async function send(cmd,data,quiet){if(!st.w)throw new Error("Chưa kết nối");var p=new Uint8Array(frame(cmd,data));try{if(st.w.properties.writeWithoutResponse)await st.w.writeValueWithoutResponse(p);else await st.w.writeValue(p)}catch(e){try{await st.w.writeValue(p)}catch(e2){throw e2}}}
 function modeName(id){var m=MODE.filter(function(x){return x.id===id})[0];return m?m.name:"Cân bằng"}
-function lightOf(id){return LIGHT.filter(function(x){return x.id===id})[0]||LIGHT[0]}
-function lightName(id){return lightOf(id).name}
+function lightOf(id){var L=LIGHT.filter(function(x){return x.id===id})[0];return L||{id:id,name:"Mode "+id,color:"one",speed:1}}
+function lightName(id){var L=lightOf(id);if(L&&L.id===id)return L.name;return "Mode "+id}
 function rageLabel(){return st.rage===1?("Bật · "+st.pct+"%"):"Tắt"}
 function pad(n){return (n<10?"0":"")+n}
 function fmtRun(ms){var s=Math.floor(ms/1000);var h=Math.floor(s/3600);s%=3600;var m=Math.floor(s/60);s%=60;return pad(h)+":"+pad(m)+":"+pad(s)}
@@ -164,7 +164,7 @@ function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],da
   if(st.on)startRun();else stopRun();
   paint();save();
   return
-}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(Date.now()<st.holdUntil)return;if(data.length>=1)st.ledOn=!!data[0];if(data.length>=2&&data[1]>=1&&data[1]<=7)st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=5)st.ledSpd=data[2];if(data.length>=9){var r=data[6],g=data[7],b=data[8];if(r+g+b>0&&lightOf(st.fx).color==="one"){st.ledHex="#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);st.ledHex=st.ledHex.toUpperCase()}}paint()}}
+}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(Date.now()<st.holdUntil)return;if(data.length>=1)st.ledOn=!!data[0];if(data.length>=2&&data[1]>=1&&data[1]<=31){if(data[1]<=7||st.probeMode)st.fx=data[1];st.lastA8Fx=data[1];}if(data.length>=3&&data[2]>=1&&data[2]<=5)st.ledSpd=data[2];if(data.length>=9){var r=data[6],g=data[7],b=data[8];if(r+g+b>0&&lightOf(st.fx).color==="one"){st.ledHex="#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);st.ledHex=st.ledHex.toUpperCase()}st.a8Raw=Array.from(u).map(function(b){return ("0"+b.toString(16)).slice(-2)}).join(" ");}paint()}}
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
 function renderLed(){
@@ -276,7 +276,86 @@ $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}ca
 $("back").onclick=function(){if(st.ok)$("dis").click();else ask()};
 $("bg").onclick=closeSh;
 $("pwr").onclick=function(){if(!st.ok){toast("Kết nối trước");return}power(!st.on)};
-$("bFw").onclick=function(){openSh("<h3>Firmware</h3><p>"+st.fw+"</p>")};
+$("bFw").onclick=function(){
+  openSh(
+    "<h3>Firmware & Lab</h3>"+
+    "<p class='hint'>Phiên bản: <b>"+st.fw+"</b> · Chip: YiChip</p>"+
+    "<button class='opt' id='labB' type='button'>B · Dò mode LED ẩn (1–20)</button>"+
+    "<button class='opt' id='labC' type='button'>C · OTA / Firmware (hướng dẫn)</button>"+
+    "<button class='opt' id='labTry' type='button'>Thử mode LED tùy chọn</button>"+
+    "<div id='labOut' class='hint' style='margin-top:10px;white-space:pre-wrap;font-family:monospace;font-size:11px;max-height:40vh;overflow:auto'></div>"
+  );
+  function out(t){var el=$("labOut");if(el)el.textContent=t}
+  $("labB").onclick=async function(){
+    if(!st.ok){toast("Kết nối trước");return}
+    out("Đang dò mode LED 1→20...\nNhìn sò: mode nào đổi đèn = firmware hỗ trợ.\n");
+    st.probeMode=true;st.busy=true;st.holdUntil=Date.now()+90000;
+    var hits=[];
+    try{
+      await send(0x06,[1]);await sleep(80);
+      for(var fx=1;fx<=20;fx++){
+        st.lastA8Fx=0;
+        await send(0x07,[fx]);await sleep(280);
+        await send(0x07,[],true);await sleep(200);
+        var a8=st.lastA8Fx;
+        var line="fx="+fx+" → A8.fx="+(a8||"?");
+        if(a8===fx){line+=" ✓ NHẬN";hits.push(fx)}
+        else if(a8&&a8!==fx){line+=" (sò báo "+a8+")"}
+        else line+=" (không phản hồi rõ)";
+        out(($("labOut").textContent||"")+line+"\n");
+      }
+      out(($("labOut").textContent||"")+"\n=== Kết quả ===\nMode firmware nhận: "+(hits.length?hits.join(", "):"chỉ thấy phản hồi gián tiếp")+"\nGhi chú: nếu đèn đổi mà A8 không khớp, vẫn tính là có effect — quan sát bằng mắt.");
+      toast("Xong dò LED");
+    }catch(e){out("Lỗi: "+e.message);toast(e.message)}
+    finally{st.probeMode=false;st.busy=false;st.holdUntil=Date.now()+2000}
+  };
+  $("labTry").onclick=function(){
+    openSh("<h3>Thử mode LED</h3><p class='hint'>Gửi 0x07 [id] — quan sát đèn sò</p><input id='fxid' type='number' min='1' max='31' value='8'/><div class='row'><button class='btn g' id='fxgo' type='button'>Gửi</button></div><p class='hint' id='fxr'></p>");
+    $("fxgo").onclick=async function(){
+      if(!st.ok){toast("Kết nối trước");return}
+      var fx=Math.max(1,Math.min(31,+$("fxid").value||1));
+      st.probeMode=true;st.busy=true;st.holdUntil=Date.now()+5000;
+      try{
+        await send(0x06,[1]);await sleep(60);
+        await send(0x07,[fx]);await sleep(150);
+        await send(0x07,[fx]);await sleep(150);
+        st.fx=fx;paint();
+        $("fxr").textContent="Đã gửi fx="+fx+" · A8.fx="+(st.lastA8Fx||"?");
+        toast("Đã gửi mode "+fx);
+      }catch(e){toast(e.message)}
+      finally{st.probeMode=false;st.busy=false}
+    };
+  };
+  $("labC").onclick=function(){
+    out(
+"=== Cách C: OTA / Firmware ===\n\n"+
+"1) Trong APK Piva có:\n"+
+"   • PivaServerRadiatorFirmwareSource\n"+
+"   • OTA/RADIATOR/ (server Rongyuan)\n"+
+"   • OtaStartFrame / OtaPacket / enter_upgrade_mode\n"+
+"   • Local firmware: chọn file .bin trong app\n\n"+
+"2) Không có file .bin sẵn trong APK.\n"+
+"   Firmware tải khi app kiểm tra cập nhật.\n\n"+
+"3) Việc bạn có thể làm an toàn:\n"+
+"   a. Mở app Piva → mục Cập nhật firmware\n"+
+"      Nếu có bản mới, dùng HTTP Toolkit / mitmproxy\n"+
+"      bắt URL tải .bin rồi gửi mình phân tích.\n"+
+"   b. App có Local firmware upgrade — nếu\n"+
+"      lấy được file .bin (cache app / bắt OTA),\n"+
+"      nâng cấp qua app gốc (an toàn hơn web).\n"+
+"   c. Dump flash SWD/UART trên YiChip:\n"+
+"      cần mở máy, hàn probe — rủi ro brick cao.\n\n"+
+"4) Web Bluetooth OTA:\n"+
+"   Protocol OTA có trong app nhưng chưa đủ\n"+
+"   byte-level để flash an toàn qua web.\n"+
+"   Flash sai = sò chết → không làm flash mù.\n\n"+
+"5) Bước tiếp theo nếu muốn C sâu:\n"+
+"   • Bắt được URL/file OTA → reverse\n"+
+"   • Hoặc gửi file .bin local → đọc header\n"+
+"   • Rồi mới bàn lệnh BLE OTA từng bước\n"
+    );
+  };
+};
 $("menu").onclick=function(){openSh("<h3>Tùy chọn</h3><button class='opt r' id='mDis' type='button'>Ngắt kết nối</button><button class='opt' id='mTimer' type='button'>Tắt nguồn theo lịch trình</button>");$("mDis").onclick=function(){closeSh();$("dis").click()};$("mTimer").onclick=function(){var leftHint=st.timerEnd?("<p class='hint' id='leftHint'>Còn lại: —</p>"):"";openSh("<h3>Tắt nguồn theo lịch trình</h3>"+leftHint+[0,30,60,120,180].map(function(m){return "<button class='opt' data-m='"+m+"' type='button'>"+(m?("Sau "+m+" phút"):"Đóng")+"</button>"}).join("")+"<input id='cm' type='number' min='1' max='720' value='45'/><div class='row'><button class='btn g' id='cgo' type='button'>Đặt</button></div>");if(st.timerEnd){(function tickHint(){var h=$("leftHint");if(!h||!st.timerEnd)return;var left=Math.max(0,st.timerEnd-Date.now());var sec=Math.ceil(left/1000),m=Math.floor(sec/60);sec%=60;h.textContent="Còn lại "+pad(m)+":"+pad(sec);if(left>0)setTimeout(tickHint,1000)})();}$("body").onclick=function(e){var b=e.target.closest("[data-m]");if(!b)return;armTimer(+b.getAttribute("data-m"));closeSh()};$("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()}}};
 $("bMode").onclick=function(){if(!st.ok){toast("Kết nối trước");return}if(st.rage===1){toast("Đang Cuồng nộ — tắt trước khi đổi hiệu năng");return}if(st.rage===2){toast("Đang Thông minh — tắt trước khi đổi hiệu năng");return}openSh("<h3>Cài đặt hiệu suất</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'">'+m.name+'</button>'}).join(""));$("body").onclick=async function(e){var b=e.target.closest("[data-id]");if(!b)return;st.mode=+b.getAttribute("data-id");st.prof="";st.holdUntil=Date.now()+5000;paint();save();closeSh();if(st.ok)try{st.busy=true;await send(0x04,[st.mode]);toast(modeName(st.mode))}catch(err){toast(err.message)}finally{st.busy=false}}};
 $("bLight").onclick=renderLed;
