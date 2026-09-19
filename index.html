@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <title>B3PRO Lab</title>
 <style>
-:root{--bg:#07090f;--card:#12151e;--line:#1e2433;--txt:#e8edf7;--dim:#8b93a7;--cy:#2ee6ff;--rd:#ff3b4a;--ok:#22d37a}
+:root{--bg:#07090f;--card:#12151e;--line:#1e2433;--txt:#e8edf7;--dim:#8b93a7;--cy:#2ee6ff;--rd:#ff3b4a;--ok:#22d37a;--lab:#ff7a3a}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 body{max-width:430px;margin:0 auto;min-height:100dvh;background:radial-gradient(120% 55% at 50% -8%,#1a2744 0%,var(--bg) 52%)}
@@ -41,6 +41,7 @@ button,input{font:inherit;color:inherit}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 4px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;min-height:68px;color:var(--txt)}
 .card.on{border-color:var(--cy)}
+.card.lab{border-color:var(--lab);background:linear-gradient(145deg,#161922,#1d1622)}
 .card h3{margin:0 0 3px;font-size:13px;color:#fff}.card p{margin:0;color:var(--dim);font-size:12px}
 .box{padding:2px 12px 28px}.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .btn{border:0;border-radius:12px;padding:10px 12px;font-weight:700;font-size:13px}
@@ -65,6 +66,9 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
 .chart-wrap .leg{display:flex;gap:10px;font-size:10px;color:var(--dim)}
 .chart-wrap .leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
 .chart-wrap canvas{width:100%;height:110px;display:block}
+.lab-sec{background:#12151e;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
+.lab-sec h4{margin:0 0 6px;font-size:13px;color:var(--lab)}
+.lab-log{background:#080a10;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:11px;color:#2ee6ff;max-height:85px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
 </style>
 </head>
 <body>
@@ -96,6 +100,7 @@ input[type=color]{height:40px;border:0;background:0;padding:0}
   <button class="card" id="bSmart" type="button"><h3>Thông minh</h3><p id="smartTxt">Tắt</p></button>
   <button class="card" id="bProt" type="button"><h3>Cơ chế bảo vệ</h3><p id="protTxt">Nhiệt thấp ?</p></button>
   <button class="card" id="bFw" type="button"><h3>Phiên bản firmware</h3><p id="fwTxt">V212</p></button>
+  <button class="card lab" id="bLab" type="button" style="grid-column:span 2"><h3>🧪 Phòng Lab Dò Lệnh & LED</h3><p>Quét mode ẩn, 2 dải màu, độ sáng</p></button>
 </div>
 <div class="box">
   <div class="row">
@@ -110,14 +115,28 @@ var SVC="49535343-fe7d-4ae5-8fa9-9fafd205e455",TX="49535343-8841-43f4-a8d4-ecbe3
 var MODE=[{id:1,name:"Im lặng"},{id:2,name:"Cân bằng"},{id:3,name:"Cực lạnh"}];
 var LIGHT=[{id:1,name:"Ánh sáng chảy",color:"multi",speed:1},{id:2,name:"Nhịp thở",color:"one",speed:1},{id:3,name:"Đuổi theo",color:"one",speed:1},{id:4,name:"Ánh sáng mềm",color:"one",speed:1},{id:5,name:"Sáng liên tục",color:"one",speed:0},{id:6,name:"Ánh sao",color:"multi",speed:1},{id:7,name:"Linh động",color:"multi",speed:1}];
 var st={ok:false,dev:null,w:null,on:false,mode:3,fx:1,rage:0,pct:100,low:false,prof:"",timer:null,timerEnd:0,fw:"V212",busy:false,holdUntil:0,runAcc:0,runAt:0,ntc:null,poll:null,pollTick:0,ledSpd:3,ledHex:"#8000FF",ledOn:true};
+var lab={probeFx:8,col1:"#FF0055",col2:"#00E5FF",b3:1,b4:1,scanTimer:null,logs:[]};
+
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},2200)}
+function labLog(msg){
+  var time=new Date().toTimeString().split(" ")[0];
+  lab.logs.unshift("["+time+"] "+msg);
+  if(lab.logs.length>25)lab.logs.pop();
+  var el=$("labLogBox");
+  if(el)el.textContent=lab.logs.join("\n");
+}
 function sum8(a){var s=0;for(var i=0;i<a.length;i++)s=(s+a[i])&255;return s}
 function frame(cmd,data){data=data||[];var p=[0x20,cmd,data.length].concat(data);p.push(sum8(p));return p}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
-async function send(cmd,data,quiet){if(!st.w)throw new Error("Chưa kết nối");var p=new Uint8Array(frame(cmd,data));try{if(st.w.properties.writeWithoutResponse)await st.w.writeValueWithoutResponse(p);else await st.w.writeValue(p)}catch(e){try{await st.w.writeValue(p)}catch(e2){throw e2}}}
+async function send(cmd,data,quiet){
+  if(!st.w)throw new Error("Chưa kết nối");
+  var p=new Uint8Array(frame(cmd,data));
+  if(!quiet)labLog("TX: 0x"+cmd.toString(16).toUpperCase()+" ["+data.join(",")+"]");
+  try{if(st.w.properties.writeWithoutResponse)await st.w.writeValueWithoutResponse(p);else await st.w.writeValue(p)}catch(e){try{await st.w.writeValue(p)}catch(e2){throw e2}}
+}
 function modeName(id){var m=MODE.filter(function(x){return x.id===id})[0];return m?m.name:"Cân bằng"}
-function lightOf(id){return LIGHT.filter(function(x){return x.id===id})[0]||LIGHT[0]}
+function lightOf(id){return LIGHT.filter(function(x){return x.id===id})[0]||{id:id,name:"Mode "+id,color:"multi",speed:1}}
 function lightName(id){return lightOf(id).name}
 function rageLabel(){return st.rage===1?("Bật · "+st.pct+"%"):"Tắt"}
 function pad(n){return (n<10?"0":"")+n}
@@ -149,24 +168,153 @@ function load(){try{var j=JSON.parse(localStorage.getItem("b3pro")||"null");if(!
 function ringSpd(){return {1:"5.5s",2:"4.2s",3:"3.2s",4:"2.2s",5:"1.3s"}[ledSp()]||"3.2s"}
 function paintRing(){var el=document.querySelector(".ring");if(!el)return;el.className="ring";if(!st.ledOn){el.classList.add("fx-off");return}el.style.setProperty("--ring-spd",ringSpd());el.style.setProperty("--ring-col",st.ledHex||"#8000FF");var map={1:"fx-flow",2:"fx-breath",3:"fx-chase",4:"fx-soft",5:"fx-solid",6:"fx-star",7:"fx-flow"};el.classList.add(map[st.fx]||"fx-flow");if(lightOf(st.fx).color==="multi")el.style.removeProperty("--ring-col")}
 function paint(){if(st.rage===1){$("modeTxt").textContent="Khóa · Cuồng nộ";$("bMode").className="card";$("bMode").style.opacity=".45"}else if(st.rage===2){$("modeTxt").textContent="Khóa · Thông minh";$("bMode").className="card";$("bMode").style.opacity=".45"}else{$("modeTxt").textContent=modeName(st.mode);$("bMode").className="card on";$("bMode").style.opacity="1"}$("lightTxt").textContent=st.ledOn?lightName(st.fx):"Tắt";$("rageTxt").textContent=rageLabel();$("bRage").className="card"+(st.rage===1?" on":"");$("smartTxt").textContent=st.rage===2?"Bật":"Tắt";$("bSmart").className="card"+(st.rage===2?" on":"");setProtUi();paintRing()}
-function parse(u){if(!u||u[0]!==0x20||u.length<4)return;var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));if(cmd===0xA5&&data.length>=7){var watt=data[0]|0,rpm=(data[3]|(data[4]<<8));$("rpm").textContent=rpm+" RPM";$("watt").textContent=watt+"W";if(watt>0)$("pps").textContent="PPS";var tp=parseTemps(data);if(tp.hot!=null){$("ntcHot").textContent=tp.hot+"°C";st.ntc=tp.hot}if(tp.cold!=null)$("ntcCold").textContent=tp.cold+"°C";pushTemp(tp.hot,tp.cold);if(Date.now()>=st.holdUntil){if(watt>0||rpm>50){if(!st.on){st.on=true;$("pwr").className="sw on";$("pwrTxt").textContent="Bật";startRun()}}else if(watt===0&&rpm===0){if(st.on){st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="Tắt";stopRun()}}}return}if(cmd===0xA6&&data.length>=4){
-  st.on=!!data[0];
-  var rg=data[1]|0;if(rg>2)rg=0;
-  var md=data[2]|0;
-  var pct=data[3]|0;
-  if(Date.now()>=st.holdUntil){
-    st.rage=rg;
-    if(rg===0&&md>=1&&md<=3)st.mode=md;
-    if(rg===1&&pct>=80&&pct<=100)st.pct=pct;
+
+function parse(u){
+  if(!u||u[0]!==0x20||u.length<4)return;
+  var cmd=u[1],len=u[2],data=Array.from(u.slice(3,3+len));
+  if(cmd!==0xA5&&cmd!==0xA6&&cmd!==0xA7&&cmd!==0xA8){
+    labLog("RX MỚI! CMD: 0x"+cmd.toString(16).toUpperCase()+" Dữ liệu: ["+data.join(",")+"]");
   }
-  $("pwr").className="sw"+(st.on?" on":"");
-  $("pwrTxt").textContent=st.on?"Bật":"Tắt";
-  if(st.on)startRun();else stopRun();
-  paint();save();
-  return
-}if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return}if(cmd===0xA8){if(Date.now()<st.holdUntil)return;if(data.length>=1)st.ledOn=!!data[0];if(data.length>=2&&data[1]>=1&&data[1]<=7)st.fx=data[1];if(data.length>=3&&data[2]>=1&&data[2]<=5)st.ledSpd=data[2];if(data.length>=9){var r=data[6],g=data[7],b=data[8];if(r+g+b>0&&lightOf(st.fx).color==="one"){st.ledHex="#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);st.ledHex=st.ledHex.toUpperCase()}}paint()}}
+  if(cmd===0xA5&&data.length>=7){
+    var watt=data[0]|0,rpm=(data[3]|(data[4]<<8));
+    $("rpm").textContent=rpm+" RPM";$("watt").textContent=watt+"W";if(watt>0)$("pps").textContent="PPS";
+    var tp=parseTemps(data);
+    if(tp.hot!=null){$("ntcHot").textContent=tp.hot+"°C";st.ntc=tp.hot}
+    if(tp.cold!=null)$("ntcCold").textContent=tp.cold+"°C";
+    pushTemp(tp.hot,tp.cold);
+    if(Date.now()>=st.holdUntil){
+      if(watt>0||rpm>50){if(!st.on){st.on=true;$("pwr").className="sw on";$("pwrTxt").textContent="Bật";startRun()}}
+      else if(watt===0&&rpm===0){if(st.on){st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="Tắt";stopRun()}}
+    }
+    return;
+  }
+  if(cmd===0xA6&&data.length>=4){
+    st.on=!!data[0];var rg=data[1]|0;if(rg>2)rg=0;var md=data[2]|0;var pct=data[3]|0;
+    if(Date.now()>=st.holdUntil){st.rage=rg;if(rg===0&&md>=1&&md<=3)st.mode=md;if(rg===1&&pct>=80&&pct<=100)st.pct=pct}
+    $("pwr").className="sw"+(st.on?" on":"");$("pwrTxt").textContent=st.on?"Bật":"Tắt";
+    if(st.on)startRun();else stopRun();paint();save();return;
+  }
+  if(cmd===0xA7){if(data.length>=2)st.low=!!data[1];setProtUi();save();return;}
+  if(cmd===0xA8){
+    labLog("RX 0xA8: ["+data.join(",")+"]");
+    if(Date.now()<st.holdUntil)return;
+    if(data.length>=1)st.ledOn=!!data[0];
+    if(data.length>=2&&data[1]>=1&&data[1]<=7)st.fx=data[1];
+    if(data.length>=3&&data[2]>=1&&data[2]<=5)st.ledSpd=data[2];
+    if(data.length>=9){
+      var r=data[6],g=data[7],b=data[8];
+      if(r+g+b>0&&lightOf(st.fx).color==="one"){
+        st.ledHex="#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);
+        st.ledHex=st.ledHex.toUpperCase();
+      }
+    }
+    paint();
+  }
+}
+
 function openSh(html){$("body").innerHTML=html;$("bg").className="bg show";$("sh").className="sh show"}
 function closeSh(){$("bg").className="bg";$("sh").className="sh"}
+
+async function sendProbe(modeId, c1Hex, c2Hex, p1, p2){
+  if(!st.ok){toast("Kết nối trước");return}
+  st.holdUntil=Date.now()+5000;
+  var rgb1=hexRgb(c1Hex), rgb2=hexRgb(c2Hex);
+  var pl=[1, modeId, ledSp(), p1, p2, 0, rgb1[0], rgb1[1], rgb1[2], 0, rgb2[0], rgb2[1], rgb2[2], 0];
+  try{
+    await send(0x06,[1]);await sleep(60);
+    await send(0x07,[modeId]);await sleep(100);
+    await send(0x08,pl);
+    toast("Đã nạp Mode "+modeId);
+  }catch(e){toast(e.message)}
+}
+
+function renderLab(){
+  openSh(
+    "<h3>🧪 Phòng Lab Dò Lệnh & LED</h3>"+
+    "<div class='lab-sec'>"+
+      "<h4>1. Dò Chế Độ Ẩn (Mode ID 0 - 15)</h4>"+
+      "<p class='hint'>Hiện tại sò đã có mode 1-7. Hãy thử 0, 8, 9, 10, 11...</p>"+
+      "<div class='row' style='align-items:center'>"+
+        "<button class='btn n' id='modePrev' style='padding:8px 14px'>-</button>"+
+        "<b id='modeLbl' style='font-size:16px;color:var(--cy);flex:1;text-align:center'>Mode: "+lab.probeFx+"</b>"+
+        "<button class='btn n' id='modeNext' style='padding:8px 14px'>+</button>"+
+        "<button class='btn g' id='modeTest'>Thử</button>"+
+      "</div>"+
+      "<button class='btn n' id='modeAuto' style='width:100%;margin-top:6px'>"+(lab.scanTimer?"Dừng Auto Scan":"Tự động quét (2.5s / mode)")+"</button>"+
+    "</div>"+
+
+    "<div class='lab-sec'>"+
+      "<h4>2. Test LED 2 Dải Màu Độc Lập</h4>"+
+      "<div class='row' style='align-items:center;gap:12px'>"+
+        "<div><span class='hint'>Màu 1</span><br/><input id='col1' type='color' value='"+lab.col1+"' style='width:60px;height:38px'/></div>"+
+        "<div><span class='hint'>Màu 2</span><br/><input id='col2' type='color' value='"+lab.col2+"' style='width:60px;height:38px'/></div>"+
+        "<button class='btn g' id='btnDual' style='flex:1;margin-top:14px'>Bơm 2 màu</button>"+
+      "</div>"+
+    "</div>"+
+
+    "<div class='lab-sec'>"+
+      "<h4>3. Dò Độ Sáng / Tham Số Byte 3 & 4</h4>"+
+      "<p class='hint' id='pLbl'>Byte 3 = "+lab.b3+" | Byte 4 = "+lab.b4+"</p>"+
+      "<input id='rngB3' type='range' min='1' max='100' value='"+lab.b3+"' style='margin-bottom:8px'/>"+
+      "<input id='rngB4' type='range' min='1' max='100' value='"+lab.b4+"'/>"+
+      "<button class='btn n' id='btnParam' style='width:100%;margin-top:8px'>Gửi tham số</button>"+
+    "</div>"+
+
+    "<div class='lab-sec'>"+
+      "<h4>4. Test Lệnh Bí Ẩn 0x0B</h4>"+
+      "<div class='row'>"+
+        "<button class='btn n' data-0b='0' style='flex:1'>0x0B [0]</button>"+
+        "<button class='btn n' data-0b='1' style='flex:1'>0x0B [1]</button>"+
+        "<button class='btn n' data-0b='2' style='flex:1'>0x0B [2]</button>"+
+      "</div>"+
+    "</div>"+
+
+    "<div class='lab-sec'>"+
+      "<h4>Nhật Ký BLE (On-screen Log)</h4>"+
+      "<div class='lab-log' id='labLogBox'>"+(lab.logs.join("\n")||"Chờ dữ liệu...")+"</div>"+
+      "<button class='btn n' id='labClear' style='margin-top:6px;padding:4px 8px;font-size:11px'>Xóa log</button>"+
+    "</div>"
+  );
+
+  $("modePrev").onclick=function(){if(lab.probeFx>0)lab.probeFx--;$("modeLbl").textContent="Mode: "+lab.probeFx};
+  $("modeNext").onclick=function(){if(lab.probeFx<25)lab.probeFx++;$("modeLbl").textContent="Mode: "+lab.probeFx};
+  $("modeTest").onclick=function(){sendProbe(lab.probeFx,lab.col1,lab.col2,lab.b3,lab.b4)};
+  
+  $("modeAuto").onclick=function(){
+    if(lab.scanTimer){
+      clearInterval(lab.scanTimer);lab.scanTimer=null;
+      this.textContent="Tự động quét (2.5s / mode)";
+      toast("Đã dừng quét");
+    }else{
+      lab.scanTimer=setInterval(function(){
+        lab.probeFx=(lab.probeFx>=15)?0:(lab.probeFx+1);
+        var el=$("modeLbl");if(el)el.textContent="Mode: "+lab.probeFx;
+        sendProbe(lab.probeFx,lab.col1,lab.col2,lab.b3,lab.b4);
+      },2500);
+      this.textContent="Dừng Auto Scan";
+      toast("Bắt đầu quét mode từ "+lab.probeFx);
+    }
+  };
+
+  $("col1").onchange=function(){lab.col1=this.value};
+  $("col2").onchange=function(){lab.col2=this.value};
+  $("btnDual").onclick=function(){sendProbe(st.fx,lab.col1,lab.col2,lab.b3,lab.b4)};
+
+  $("rngB3").oninput=function(){lab.b3=+this.value;$("pLbl").textContent="Byte 3 = "+lab.b3+" | Byte 4 = "+lab.b4};
+  $("rngB4").oninput=function(){lab.b4=+this.value;$("pLbl").textContent="Byte 3 = "+lab.b3+" | Byte 4 = "+lab.b4};
+  $("btnParam").onclick=function(){sendProbe(st.fx,lab.col1,lab.col2,lab.b3,lab.b4)};
+
+  $("body").onclick=async function(e){
+    var b0=e.target.closest("[data-0b]");
+    if(b0&&st.ok){
+      var v=+b0.getAttribute("data-0b");
+      try{await send(0x0B,[v]);toast("Gửi 0x0B ["+v+"]")}catch(err){toast(err.message)}
+    }
+  };
+
+  $("labClear").onclick=function(){lab.logs=[];var el=$("labLogBox");if(el)el.textContent=""};
+}
+
 function renderLed(){
   var L=lightOf(st.fx);
   var spdHtml="";
@@ -213,8 +361,21 @@ function renderLed(){
     if(st.ok)try{st.busy=true;st.holdUntil=Date.now()+3000;await send(0x06,[0]);toast("Đã tắt đèn")}catch(e){toast(e.message)}finally{st.busy=false}
   };
 }
-async function attach(dev){st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);await n.startNotifications();n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});dev.addEventListener("gattserverdisconnected",function(){stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối")});st.ok=true;st.holdUntil=Date.now()+1500;st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="…";$("dot").className="dot ok";$("conn").textContent="Đã kết nối";toast("Đã kết nối — đang đồng bộ");resetRun();paint();startPoll();try{await send(0x07,[],true);await sleep(50);await send(0x0C,[],true)}catch(e){}}
-async function ask(){if(!navigator.bluetooth){toast("Cần Chrome Android");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
+
+async function attach(dev){
+  st.dev=dev;var server=await dev.gatt.connect();var svc=await server.getPrimaryService(SVC);st.w=await svc.getCharacteristic(TX);var n=await svc.getCharacteristic(RX);
+  await n.startNotifications();
+  n.addEventListener("characteristicvaluechanged",function(ev){parse(new Uint8Array(ev.target.value.buffer))});
+  dev.addEventListener("gattserverdisconnected",function(){
+    stopPoll();stopRun();st.ok=false;st.w=null;if(lab.scanTimer){clearInterval(lab.scanTimer);lab.scanTimer=null}
+    $("dot").className="dot";$("conn").textContent="Mất kết nối";toast("Mất kết nối");labLog("BLE Disconnected");
+  });
+  st.ok=true;st.holdUntil=Date.now()+1500;st.on=false;$("pwr").className="sw";$("pwrTxt").textContent="…";$("dot").className="dot ok";$("conn").textContent="Đã kết nối";
+  toast("Đã kết nối");labLog("BLE Connected!");resetRun();paint();startPoll();
+  try{await send(0x07,[],true);await sleep(50);await send(0x0C,[],true)}catch(e){}
+}
+
+async function ask(){if(!navigator.bluetooth){toast("Cần Chrome / Bluefy WebBLE");return}try{await attach(await navigator.bluetooth.requestDevice({filters:[{name:"B3PRO"},{namePrefix:"B3PRO"}],optionalServices:[SVC,"generic_access","device_information"]}))}catch(e){toast(e.message||"Không kết nối được")}}
 async function power(on){st.on=on;st.holdUntil=Date.now()+2500;$("pwr").className="sw"+(on?" on":"");$("pwrTxt").textContent=on?"Bật":"Tắt";if(on)startRun();else stopRun();if(st.ok)try{await send(0x0A,[on?1:0])}catch(e){toast(e.message)}}
 function armTimer(min){if(st.timer)clearTimeout(st.timer);st.timer=null;st.timerEnd=0;paintTimer();if(!min){toast("Đã đóng hẹn giờ");return}st.timerEnd=Date.now()+min*60000;toast("Tắt sau "+min+" phút");st.timer=setTimeout(function(){st.timer=null;st.timerEnd=0;paintTimer();power(false);toast("Đã tắt theo lịch")},min*60000);paintTimer()}
 var hist={hot:[],cold:[],max:60};
@@ -225,15 +386,10 @@ function pushTemp(h,c){
   drawChart();
 }
 function drawChart(){
-  var cv=$("tChart");if(!cv)return;
-  var dpr=window.devicePixelRatio||1;
-  var w=cv.clientWidth||360,h=110;
+  var cv=$("tChart");if(!cv)return;var dpr=window.devicePixelRatio||1;var w=cv.clientWidth||360,h=110;
   if(cv.width!==Math.floor(w*dpr)||cv.height!==Math.floor(h*dpr)){cv.width=Math.floor(w*dpr);cv.height=Math.floor(h*dpr)}
-  var ctx=cv.getContext("2d");
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
-  var padL=28,padR=8,padT=8,padB=16;
-  var iw=w-padL-padR,ih=h-padT-padB;
+  var ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  var padL=28,padR=8,padT=8,padB=16,iw=w-padL-padR,ih=h-padT-padB;
   var vals=hist.hot.concat(hist.cold).filter(function(v){return v!=null});
   var ymin=0,ymax=60;
   if(vals.length){ymin=Math.max(0,Math.min.apply(null,vals)-5);ymax=Math.min(100,Math.max.apply(null,vals)+5);if(ymax-ymin<15)ymax=ymin+15}
@@ -241,35 +397,22 @@ function drawChart(){
   function xx(i,n){return padL+(n<=1?iw/2:iw*i/(n-1))}
   ctx.strokeStyle="#1e2433";ctx.lineWidth=1;
   for(var g=0;g<4;g++){
-    var gy=padT+ih*g/3;
-    ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+iw,gy);ctx.stroke();
-    var tv=ymax-(ymax-ymin)*g/3;
-    ctx.fillStyle="#8b93a7";ctx.font="9px sans-serif";ctx.textAlign="right";
-    ctx.fillText(Math.round(tv)+"°",padL-4,gy+3);
+    var gy=padT+ih*g/3;ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+iw,gy);ctx.stroke();
+    var tv=ymax-(ymax-ymin)*g/3;ctx.fillStyle="#8b93a7";ctx.font="9px sans-serif";ctx.textAlign="right";ctx.fillText(Math.round(tv)+"°",padL-4,gy+3);
   }
   function strokeSeries(arr,color){
-    var n=arr.length;if(n<2)return;
-    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineJoin="round";
-    var started=false;
-    for(var i=0;i<n;i++){
-      if(arr[i]==null){started=false;continue}
-      var x=xx(i,n),y=yx(arr[i]);
-      if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-    if(arr[n-1]!=null){
-      ctx.beginPath();ctx.fillStyle=color;
-      ctx.arc(xx(n-1,n),yx(arr[n-1]),3,0,Math.PI*2);ctx.fill();
-    }
+    var n=arr.length;if(n<2)return;ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineJoin="round";var started=false;
+    for(var i=0;i<n;i++){if(arr[i]==null){started=false;continue}var x=xx(i,n),y=yx(arr[i]);if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)}
+    ctx.stroke();if(arr[n-1]!=null){ctx.beginPath();ctx.fillStyle=color;ctx.arc(xx(n-1,n),yx(arr[n-1]),3,0,Math.PI*2);ctx.fill()}
   }
-  strokeSeries(hist.hot,"#ff3b4a");
-  strokeSeries(hist.cold,"#2ee6ff");
+  strokeSeries(hist.hot,"#ff3b4a");strokeSeries(hist.cold,"#2ee6ff");
   ctx.fillStyle="#8b93a7";ctx.font="9px sans-serif";ctx.textAlign="left";
   if(hist.hot.length){
     var lh=hist.hot[hist.hot.length-1],lc=hist.cold[hist.cold.length-1];
     ctx.fillText((lh!=null?lh+"°":"—")+" / "+(lc!=null?lc+"°":"—"),padL,h-4);
   }
 }
+
 load();paint();drawChart();setInterval(tickRun,1000);window.addEventListener("resize",function(){drawChart()});
 $("connect").onclick=ask;
 $("dis").onclick=function(){try{st.dev&&st.dev.gatt&&st.dev.gatt.disconnect()}catch(e){}stopPoll();stopRun();st.ok=false;st.w=null;$("dot").className="dot";$("conn").textContent="Chưa kết nối"};
@@ -280,21 +423,18 @@ $("bFw").onclick=function(){openSh("<h3>Firmware</h3><p>"+st.fw+"</p>")};
 $("menu").onclick=function(){openSh("<h3>Tùy chọn</h3><button class='opt r' id='mDis' type='button'>Ngắt kết nối</button><button class='opt' id='mTimer' type='button'>Tắt nguồn theo lịch trình</button>");$("mDis").onclick=function(){closeSh();$("dis").click()};$("mTimer").onclick=function(){var leftHint=st.timerEnd?("<p class='hint' id='leftHint'>Còn lại: —</p>"):"";openSh("<h3>Tắt nguồn theo lịch trình</h3>"+leftHint+[0,30,60,120,180].map(function(m){return "<button class='opt' data-m='"+m+"' type='button'>"+(m?("Sau "+m+" phút"):"Đóng")+"</button>"}).join("")+"<input id='cm' type='number' min='1' max='720' value='45'/><div class='row'><button class='btn g' id='cgo' type='button'>Đặt</button></div>");if(st.timerEnd){(function tickHint(){var h=$("leftHint");if(!h||!st.timerEnd)return;var left=Math.max(0,st.timerEnd-Date.now());var sec=Math.ceil(left/1000),m=Math.floor(sec/60);sec%=60;h.textContent="Còn lại "+pad(m)+":"+pad(sec);if(left>0)setTimeout(tickHint,1000)})();}$("body").onclick=function(e){var b=e.target.closest("[data-m]");if(!b)return;armTimer(+b.getAttribute("data-m"));closeSh()};$("cgo").onclick=function(){armTimer(+$("cm").value||0);closeSh()}}};
 $("bMode").onclick=function(){if(!st.ok){toast("Kết nối trước");return}if(st.rage===1){toast("Đang Cuồng nộ — tắt trước khi đổi hiệu năng");return}if(st.rage===2){toast("Đang Thông minh — tắt trước khi đổi hiệu năng");return}openSh("<h3>Cài đặt hiệu suất</h3>"+MODE.map(function(m){return '<button class="opt'+(st.mode===m.id?" sel":"")+'" data-id="'+m.id+'">'+m.name+'</button>'}).join(""));$("body").onclick=async function(e){var b=e.target.closest("[data-id]");if(!b)return;st.mode=+b.getAttribute("data-id");st.prof="";st.holdUntil=Date.now()+5000;paint();save();closeSh();if(st.ok)try{st.busy=true;await send(0x04,[st.mode]);toast(modeName(st.mode))}catch(err){toast(err.message)}finally{st.busy=false}}};
 $("bLight").onclick=renderLed;
+$("bLab").onclick=renderLab;
+
 $("bRage").onclick=function(){
   openSh("<h3>Cuồng nộ</h3><button class='opt"+(st.rage===1?" sel":"")+"' id='rOn'>Bật</button><button class='opt"+(st.rage!==1?" sel":"")+"' id='rOff'>Tắt</button><div id='fanBox' class='"+(st.rage===1?"":" hide")+"'><p class='hint' id='pctLbl'>Tốc độ quạt "+st.pct+"%</p><input id='rng' type='range' min='80' max='100' value='"+Math.max(80,st.pct)+"'/><div class='row'><button class='btn g' id='apply'>Gửi % quạt</button></div></div>");
   function showFan(on){var b=$("fanBox");if(b)b.className=on?"":"hide"}
   async function setRage(on){if(!st.ok){toast("Kết nối trước");return}st.busy=true;st.holdUntil=Date.now()+7000;try{
   if(on){
     if(st.rage===2){await send(0x09,[0]);await sleep(150)}
-    st.rage=1;paint();
-    await send(0x09,[1]);await sleep(150);
-    var p=Math.max(80,Math.min(100,st.pct|0));st.pct=p;
-    await send(0x05,[p]);await sleep(100);
-    await send(0x09,[1]);
+    st.rage=1;paint();await send(0x09,[1]);await sleep(150);
+    var p=Math.max(80,Math.min(100,st.pct|0));st.pct=p;await send(0x05,[p]);await sleep(100);await send(0x09,[1]);
   }else{
-    st.rage=0;paint();
-    await send(0x09,[0]);await sleep(150);
-    await send(0x04,[st.mode>=1&&st.mode<=3?st.mode:3]);
+    st.rage=0;paint();await send(0x09,[0]);await sleep(150);await send(0x04,[st.mode>=1&&st.mode<=3?st.mode:3]);
   }
   save();showFan(!!on);toast(on?"Cuồng nộ ON · "+st.pct+"%":"Cuồng nộ OFF");
 }catch(e){toast(e.message)}finally{st.busy=false}}
@@ -305,21 +445,15 @@ $("bRage").onclick=function(){
 };
 $("bSmart").onclick=async function(){
   if(!st.ok){toast("Kết nối trước");return}
-  var on=st.rage!==2;
-  st.busy=true;st.holdUntil=Date.now()+7000;
+  var on=st.rage!==2;st.busy=true;st.holdUntil=Date.now()+7000;
   try{
     if(on){
       if(st.rage===1){await send(0x09,[0]);await sleep(150)}
-      st.rage=2;paint();
-      await send(0x09,[2]);await sleep(150);
-      await send(0x09,[2]);
+      st.rage=2;paint();await send(0x09,[2]);await sleep(150);await send(0x09,[2]);
     }else{
-      st.rage=0;paint();
-      await send(0x09,[0]);await sleep(150);
-      await send(0x04,[st.mode>=1&&st.mode<=3?st.mode:3]);
+      st.rage=0;paint();await send(0x09,[0]);await sleep(150);await send(0x04,[st.mode>=1&&st.mode<=3?st.mode:3]);
     }
-    save();
-    toast(on?"Thông minh ON":"Thông minh OFF");
+    save();toast(on?"Thông minh ON":"Thông minh OFF");
   }catch(e){toast(e.message)}finally{st.busy=false}
 };
 $("bProt").onclick=function(){openSh("<h3>Cơ chế bảo vệ</h3><button class='opt' id='lon'>Bật nhiệt thấp</button><button class='opt' id='loff'>Tắt nhiệt thấp</button>");$("lon").onclick=async function(){if(st.ok)try{await send(0x0C,[1])}catch(e){toast(e.message)}};$("loff").onclick=async function(){if(st.ok)try{await send(0x0C,[0])}catch(e){toast(e.message)}}};
